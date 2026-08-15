@@ -15,6 +15,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminKiotViet from './pages/admin/AdminKiotViet';
 import AdminLayout from './pages/admin/AdminLayout';
 import { AdminProvider } from './context/AdminContext';
 import { UserProvider } from './context/UserContext';
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/admin/products/new" element={<AdminLayout><AdminProductForm /></AdminLayout>} />
           <Route path="/admin/products/:id/edit" element={<AdminLayout><AdminProductForm /></AdminLayout>} />
           <Route path="/admin/orders" element={<AdminLayout><AdminOrders /></AdminLayout>} />
+          <Route path="/admin/kiotviet" element={<AdminLayout><AdminKiotViet /></AdminLayout>} />
           <Route path="*" element={<Home />} />
         </Routes>
       </main>

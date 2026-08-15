@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const kiotviet = require('./kiotviet');
 
 const app = express();
 const PORT = process.env.PORT || 5033;
@@ -99,7 +101,38 @@ db.exec(`
     password_hash TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS kiotviet_customers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kiotviet_id INTEGER UNIQUE,
+    code TEXT,
+    name TEXT,
+    contact_number TEXT,
+    email TEXT,
+    address TEXT,
+    synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+// Migrate: thêm cột liên kết KiotViet cho các bảng đã tồn tại từ trước
+function ensureColumn(table, column, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+}
+ensureColumn('categories', 'kiotviet_id', 'INTEGER');
+ensureColumn('categories', 'kiotviet_code', 'TEXT');
+ensureColumn('products', 'kiotviet_id', 'INTEGER');
+ensureColumn('products', 'kiotviet_code', 'TEXT');
+ensureColumn('orders', 'kiotviet_order_id', 'INTEGER');
+ensureColumn('orders', 'kiotviet_order_code', 'TEXT');
+ensureColumn('orders', 'kiotviet_sync_status', "TEXT DEFAULT 'not_synced'");
+ensureColumn('orders', 'kiotviet_sync_error', 'TEXT');
+
+function slugify(str) {
+  return (str || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').trim();
+}
 
 const catCount = db.prepare('SELECT COUNT(*) as c FROM categories').get().c;
 if (catCount === 0) {
@@ -535,7 +568,50 @@ app.get('/api/admin/orders', requireAdmin, (req, res) => {
   res.json({ orders: rows, total, page: parseInt(page) });
 });
 
-app.post('/api/admin/orders', requireAdmin, (req, res) => {
+// Đẩy đơn hàng lên KiotViet: map từng dòng hàng theo products.kiotviet_id
+async function pushOrderToKiotViet({ customer_name, customer_email, customer_phone, customer_address, items, notes }) {
+  const parsedItems = Array.isArray(items) ? items : JSON.parse(items || '[]');
+  if (!parsedItems.length) return { status: 'skipped_no_items' };
+
+  const findByLocalId = db.prepare('SELECT kiotviet_id FROM products WHERE id = ?');
+  const mappedDetails = [];
+  const unmapped = [];
+  for (const item of parsedItems) {
+    const productId = item.product_id || item.productId || item.product?.id;
+    const qty = item.qty || item.quantity || 1;
+    const price = item.price ?? item.product?.price ?? 0;
+    const localProduct = productId ? findByLocalId.get(productId) : null;
+    if (localProduct?.kiotviet_id) {
+      mappedDetails.push({ productId: localProduct.kiotviet_id, quantity: qty, price });
+    } else {
+      unmapped.push(item.name || item.product?.name || `#${productId}`);
+    }
+  }
+
+  if (!mappedDetails.length) {
+    return { status: 'skipped_unmapped', error: `Không có sản phẩm nào liên kết với KiotViet: ${unmapped.join(', ')}` };
+  }
+
+  const branchId = await kiotviet.getDefaultBranchId();
+  const customer = await kiotviet.findOrCreateCustomer({
+    name: customer_name, phone: customer_phone, email: customer_email, address: customer_address,
+  });
+  const kvOrder = await kiotviet.createOrder({
+    branchId,
+    customerId: customer.id,
+    orderDetails: mappedDetails,
+    description: notes || `Đơn hàng website ${customer_name}`,
+  });
+
+  return {
+    status: unmapped.length ? 'partial' : 'synced',
+    kiotvietOrderId: kvOrder.id,
+    kiotvietOrderCode: kvOrder.code,
+    error: unmapped.length ? `Bỏ qua sản phẩm chưa liên kết KiotViet: ${unmapped.join(', ')}` : null,
+  };
+}
+
+app.post('/api/admin/orders', requireAdmin, async (req, res) => {
   const { customer_name, customer_email, customer_phone, customer_address,
     items, subtotal, shipping, total, status, payment_method, payment_status, notes } = req.body;
   if (!customer_name) return res.status(400).json({ error: 'Thiếu tên khách hàng.' });
@@ -546,7 +622,20 @@ app.post('/api/admin/orders', requireAdmin, (req, res) => {
     customer_phone||'', customer_address||'', JSON.stringify(items||[]),
     subtotal||0, shipping||0, total||0, status||'pending', payment_method||'bank_transfer',
     payment_status||'unpaid', notes||'');
-  res.json({ success: true, id: result.lastInsertRowid, order_number });
+
+  const orderId = result.lastInsertRowid;
+  let kiotvietSync = { status: 'not_configured' };
+  if (kiotviet.isConfigured()) {
+    try {
+      kiotvietSync = await pushOrderToKiotViet({ customer_name, customer_email, customer_phone, customer_address, items, notes });
+    } catch (e) {
+      kiotvietSync = { status: 'error', error: e.message };
+    }
+    db.prepare('UPDATE orders SET kiotviet_order_id=?, kiotviet_order_code=?, kiotviet_sync_status=?, kiotviet_sync_error=? WHERE id=?')
+      .run(kiotvietSync.kiotvietOrderId || null, kiotvietSync.kiotvietOrderCode || null, kiotvietSync.status, kiotvietSync.error || null, orderId);
+  }
+
+  res.json({ success: true, id: orderId, order_number, kiotviet: kiotvietSync });
 });
 
 app.put('/api/admin/orders/:id', requireAdmin, (req, res) => {
@@ -569,6 +658,100 @@ app.get('/api/admin/contacts', requireAdmin, (_req, res) => {
 
 app.get('/api/admin/subscribers', requireAdmin, (_req, res) => {
   res.json(db.prepare('SELECT * FROM subscribers ORDER BY created_at DESC').all());
+});
+
+// ─── KiotViet Integration ──────────────────────────────────────────
+app.get('/api/admin/kiotviet/status', requireAdmin, async (_req, res) => {
+  if (!kiotviet.isConfigured()) return res.json({ configured: false, connected: false });
+  try {
+    await kiotviet.getAccessToken();
+    res.json({ configured: true, connected: true });
+  } catch (e) {
+    res.json({ configured: true, connected: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/kiotviet/sync-products', requireAdmin, async (_req, res) => {
+  if (!kiotviet.isConfigured()) return res.status(400).json({ error: 'Chưa cấu hình kết nối KiotViet (backend/.env)' });
+  try {
+    const kvCategories = await kiotviet.getCategories();
+    let catCreated = 0, catUpdated = 0;
+    const findCatByKvId = db.prepare('SELECT id FROM categories WHERE kiotviet_id = ?');
+    const findCatByName = db.prepare('SELECT id FROM categories WHERE lower(name) = lower(?) AND kiotviet_id IS NULL');
+    const linkCat = db.prepare('UPDATE categories SET kiotviet_id = ?, kiotviet_code = ? WHERE id = ?');
+    const insertCat = db.prepare(`INSERT INTO categories (name, slug, kiotviet_id, kiotviet_code, sort_order)
+      VALUES (?,?,?,?, (SELECT COALESCE(MAX(sort_order),0)+1 FROM categories))`);
+
+    for (const c of kvCategories) {
+      if (findCatByKvId.get(c.categoryId)) { catUpdated++; continue; }
+      const byName = findCatByName.get(c.categoryName);
+      if (byName) { linkCat.run(c.categoryId, c.categoryCode || null, byName.id); catUpdated++; }
+      else { insertCat.run(c.categoryName, slugify(c.categoryName), c.categoryId, c.categoryCode || null); catCreated++; }
+    }
+
+    const kvProducts = await kiotviet.getProducts();
+    let prodCreated = 0, prodUpdated = 0, skipped = 0;
+    const findProdByKvId = db.prepare('SELECT id FROM products WHERE kiotviet_id = ?');
+    const findCatIdByKvId = db.prepare('SELECT id FROM categories WHERE kiotviet_id = ?');
+    const findProdBySlug = db.prepare('SELECT 1 FROM products WHERE slug = ?');
+    const updateProd = db.prepare('UPDATE products SET name=?, price=?, category_id=?, is_soldout=?, kiotviet_code=? WHERE id=?');
+    const insertProd = db.prepare(`INSERT INTO products (name, slug, price, category_id, description, images, kiotviet_id, kiotviet_code, is_soldout)
+      VALUES (?,?,?,?,?,?,?,?,?)`);
+
+    for (const p of kvProducts) {
+      const localCat = p.categoryId ? findCatIdByKvId.get(p.categoryId) : null;
+      const categoryId = localCat ? localCat.id : null;
+      const onHand = Array.isArray(p.inventories) ? p.inventories.reduce((s, i) => s + (i.onHand || 0), 0) : null;
+      const isSoldout = onHand !== null && onHand <= 0 ? 1 : 0;
+      const images = Array.isArray(p.images) ? p.images.map(i => (typeof i === 'string' ? i : i.image)).filter(Boolean) : [];
+      const name = p.fullName || p.name;
+
+      const existing = findProdByKvId.get(p.id);
+      if (existing) {
+        updateProd.run(name, p.basePrice || 0, categoryId, isSoldout, p.code || null, existing.id);
+        prodUpdated++;
+      } else if (!categoryId) {
+        skipped++;
+      } else {
+        let slug = slugify(name), uniqueSlug = slug, n = 1;
+        while (findProdBySlug.get(uniqueSlug)) uniqueSlug = `${slug}-${n++}`;
+        insertProd.run(name, uniqueSlug, p.basePrice || 0, categoryId, p.description || '', JSON.stringify(images), p.id, p.code || null, isSoldout);
+        prodCreated++;
+      }
+    }
+
+    res.json({
+      success: true,
+      categories: { total: kvCategories.length, created: catCreated, updated: catUpdated },
+      products: { total: kvProducts.length, created: prodCreated, updated: prodUpdated, skipped },
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/kiotviet/sync-customers', requireAdmin, async (_req, res) => {
+  if (!kiotviet.isConfigured()) return res.status(400).json({ error: 'Chưa cấu hình kết nối KiotViet (backend/.env)' });
+  try {
+    const customers = await kiotviet.getCustomers();
+    const upsert = db.prepare(`
+      INSERT INTO kiotviet_customers (kiotviet_id, code, name, contact_number, email, address, synced_at)
+      VALUES (?,?,?,?,?,?, CURRENT_TIMESTAMP)
+      ON CONFLICT(kiotviet_id) DO UPDATE SET
+        code=excluded.code, name=excluded.name, contact_number=excluded.contact_number,
+        email=excluded.email, address=excluded.address, synced_at=CURRENT_TIMESTAMP
+    `);
+    for (const c of customers) {
+      upsert.run(c.id, c.code || null, c.name || '', c.contactNumber || '', c.email || '', c.address || '');
+    }
+    res.json({ success: true, total: customers.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/kiotviet/customers', requireAdmin, (_req, res) => {
+  res.json(db.prepare('SELECT * FROM kiotviet_customers ORDER BY synced_at DESC LIMIT 200').all());
 });
 
 // ─── User Auth ───────────────────────────────────────────────────

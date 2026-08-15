@@ -34,6 +34,36 @@ export default function AdminOrders() {
     customer_address: '', total: '', shipping: '0',
     payment_method: 'bank_transfer', notes: '',
   });
+  const [newOrderItems, setNewOrderItems] = useState([]);
+  const [productOptions, setProductOptions] = useState([]);
+  const [pickProductId, setPickProductId] = useState('');
+  const [pickQty, setPickQty] = useState(1);
+
+  useEffect(() => {
+    if (showNewOrder && productOptions.length === 0) {
+      authFetch('/api/admin/products?limit=1000')
+        .then(r => r.json()).then(d => setProductOptions(d.products || []))
+        .catch(() => {});
+    }
+  }, [showNewOrder]);
+
+  const addOrderItem = () => {
+    if (!pickProductId) return;
+    const p = productOptions.find(p => String(p.id) === String(pickProductId));
+    if (!p) return;
+    setNewOrderItems(items => {
+      const existing = items.find(i => i.product_id === p.id);
+      if (existing) return items.map(i => i.product_id === p.id ? { ...i, qty: i.qty + pickQty } : i);
+      return [...items, { product_id: p.id, name: p.name, price: p.price, qty: pickQty }];
+    });
+    setPickProductId('');
+    setPickQty(1);
+  };
+
+  const removeOrderItem = (productId) => setNewOrderItems(items => items.filter(i => i.product_id !== productId));
+
+  const itemsSubtotal = newOrderItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const computedTotal = itemsSubtotal + (parseFloat(newOrder.shipping) || 0);
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -70,14 +100,26 @@ export default function AdminOrders() {
     e.preventDefault();
     setSaving(true);
     try {
+      const hasItems = newOrderItems.length > 0;
       const res = await authFetch('/api/admin/orders', {
         method: 'POST',
-        body: JSON.stringify({ ...newOrder, total: parseFloat(newOrder.total), shipping: parseFloat(newOrder.shipping) }),
+        body: JSON.stringify({
+          ...newOrder,
+          items: newOrderItems,
+          subtotal: hasItems ? itemsSubtotal : undefined,
+          total: hasItems ? computedTotal : parseFloat(newOrder.total),
+          shipping: parseFloat(newOrder.shipping),
+        }),
       });
       if (res.ok) {
+        const data = await res.json();
         setShowNewOrder(false);
         setNewOrder({ customer_name: '', customer_email: '', customer_phone: '', customer_address: '', total: '', shipping: '0', payment_method: 'bank_transfer', notes: '' });
+        setNewOrderItems([]);
         fetchOrders();
+        if (data.kiotviet && !['synced', 'not_configured'].includes(data.kiotviet.status)) {
+          alert(`Đơn hàng đã tạo, nhưng đồng bộ KiotViet: ${data.kiotviet.error || data.kiotviet.status}`);
+        }
       }
     } catch { alert('Lỗi khi tạo đơn hàng'); }
     finally { setSaving(false); }
@@ -251,12 +293,40 @@ export default function AdminOrders() {
                   onChange={e => setNewOrder(f => ({ ...f, customer_address: e.target.value }))}
                   className={inputCls} placeholder="Số nhà, đường, phường, quận, thành phố" />
               </div>
+              <div>
+                <label className={labelCls}>Sản phẩm (để đẩy đơn lên KiotViet cần chọn ít nhất 1 sản phẩm đã liên kết)</label>
+                <div className="flex gap-2">
+                  <select value={pickProductId} onChange={e => setPickProductId(e.target.value)} className={inputCls + ' bg-white cursor-pointer'}>
+                    <option value="">— Chọn sản phẩm —</option>
+                    {productOptions.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} · {fmt(p.price)}{p.kiotviet_id ? '' : ' (chưa liên kết KiotViet)'}</option>
+                    ))}
+                  </select>
+                  <input type="number" min="1" value={pickQty} onChange={e => setPickQty(parseInt(e.target.value) || 1)}
+                    className={inputCls + ' w-20'} />
+                  <button type="button" onClick={addOrderItem} className="btn-outline whitespace-nowrap">+ Thêm</button>
+                </div>
+                {newOrderItems.length > 0 && (
+                  <div className="mt-3 border border-gray-100 divide-y divide-gray-50">
+                    {newOrderItems.map(i => (
+                      <div key={i.product_id} className="flex items-center justify-between px-3 py-2 text-sm font-inter">
+                        <span>{i.name} × {i.qty}</span>
+                        <div className="flex items-center gap-3">
+                          <span>{fmt(i.price * i.qty)}</span>
+                          <button type="button" onClick={() => removeOrderItem(i.product_id)} className="text-warm-gray hover:text-red-500">✕</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Tổng tiền (₫) *</label>
-                  <input required type="number" value={newOrder.total}
+                  <input required type="number" value={newOrderItems.length > 0 ? computedTotal : newOrder.total}
+                    readOnly={newOrderItems.length > 0}
                     onChange={e => setNewOrder(f => ({ ...f, total: e.target.value }))}
-                    className={inputCls} placeholder="12000000" />
+                    className={inputCls + (newOrderItems.length > 0 ? ' bg-gray-50 text-warm-gray' : '')} placeholder="12000000" />
                 </div>
                 <div>
                   <label className={labelCls}>Phí vận chuyển (₫)</label>

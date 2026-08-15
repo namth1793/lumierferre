@@ -6,6 +6,7 @@ const NAV = [
   { label: 'Tổng Quan', href: '/admin/dashboard', icon: '◈' },
   { label: 'Sản Phẩm', href: '/admin/products', icon: '✦' },
   { label: 'Đơn Hàng', href: '/admin/orders', icon: '◇' },
+  { label: 'KiotViet', href: '/admin/kiotviet', icon: '⇄' },
 ];
 
 export default function AdminLayout({ children }) {
