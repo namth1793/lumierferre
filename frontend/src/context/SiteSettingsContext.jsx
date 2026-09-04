@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const SiteSettingsContext = createContext(null);
 
@@ -13,8 +13,8 @@ export function SiteSettingsProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/settings')
+  const refetch = useCallback(() => {
+    return fetch('/api/settings')
       .then(r => r.json())
       .then(data => setSettings(prev => ({
         general: { ...prev.general, ...(data.general || {}) },
@@ -26,8 +26,10 @@ export function SiteSettingsProvider({ children }) {
       .finally(() => setLoaded(true));
   }, []);
 
+  useEffect(() => { refetch(); }, [refetch]);
+
   return (
-    <SiteSettingsContext.Provider value={{ settings, loaded }}>
+    <SiteSettingsContext.Provider value={{ settings, loaded, refetch }}>
       {children}
     </SiteSettingsContext.Provider>
   );

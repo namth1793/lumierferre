@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
+import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { ImageUploaderSingle } from '../../components/admin/ImageUploader';
 
 export default function AdminAboutContent() {
   const { authFetch } = useAdmin();
+  const { refetch } = useSiteSettings();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -36,7 +38,7 @@ export default function AdminAboutContent() {
     setSaving(true); setError(''); setSaved(false);
     try {
       const res = await authFetch('/api/admin/settings/about', { method: 'PUT', body: JSON.stringify(form) });
-      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+      if (res.ok) { await refetch(); setSaved(true); setTimeout(() => setSaved(false), 2500); }
       else setError('Lỗi khi lưu nội dung');
     } catch { setError('Không thể kết nối máy chủ'); }
     finally { setSaving(false); }
