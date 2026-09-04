@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-
-const FB_URL = 'https://www.facebook.com/people/LUMIE-FERRE/61591943820241/';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export default function Footer() {
   const { t } = useLanguage();
+  const { settings } = useSiteSettings();
+  const g = settings.general;
+  const FB_URL = g.facebook_url || 'https://www.facebook.com/';
   const [email, setEmail] = useState('');
   const [subStatus, setSubStatus] = useState('');
 
@@ -104,11 +106,11 @@ export default function Footer() {
           <div>
             <h4 className="text-[10px] tracking-[0.25em] uppercase font-inter text-white/60 mb-5">{t('footer.contactTitle')}</h4>
             <address className="not-italic space-y-3 text-xs text-white/70 font-inter leading-relaxed">
-              <p>15 Tràng Tiền, Hoàn Kiếm<br />Hà Nội, Việt Nam</p>
-              <p>367 Nguyễn Đình Chiểu<br />Phường Bàn Cờ, TP. Hồ Chí Minh</p>
-              <p>+84 28 3829 5678</p>
-              <p>hello@lumierferre.com</p>
-              <p>{t('footer.hours')}</p>
+              <p>{g.footer_address_hn}</p>
+              <p>{g.footer_address_hcm}</p>
+              <p>{g.footer_phone}</p>
+              <p>{g.footer_email}</p>
+              <p>{g.footer_hours || t('footer.hours')}</p>
             </address>
             <div className="flex gap-4 mt-5">
               <a href={FB_URL} target="_blank" rel="noopener noreferrer" className="text-[10px] tracking-[0.1em] uppercase font-inter text-white/50 hover:text-white transition-colors">F</a>
@@ -120,7 +122,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="font-cormorant text-2xl font-light tracking-[0.2em] uppercase">LUMIÈRE FERRÉ</p>
+          <p className="font-cormorant text-2xl font-light tracking-[0.2em] uppercase">{g.site_name}</p>
           <p className="text-[10px] text-white/40 font-inter tracking-wider">
             {t('footer.copyright', { year: new Date().getFullYear() })}
           </p>

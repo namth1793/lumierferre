@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
+import { ImageUploaderMulti } from '../../components/admin/ImageUploader';
 
 export default function AdminProductForm() {
   const { id } = useParams();
@@ -18,7 +19,7 @@ export default function AdminProductForm() {
     name: '', price: '', original_price: '', category_id: '', collection_id: '',
     description: '', fabric: '', care: '',
     sizes: 'XS,S,M,L,XL', colors: 'Đen,Trắng,Kem',
-    images: '',
+    images: [],
     is_featured: false, is_new: false, is_bridal: false, is_soldout: false,
   });
 
@@ -40,7 +41,7 @@ export default function AdminProductForm() {
             category_id: p.category_id || '', collection_id: p.collection_id || '',
             description: p.description || '', fabric: p.fabric || '', care: p.care || '',
             sizes: (p.sizes || []).join(','), colors: (p.colors || []).join(','),
-            images: (p.images || []).join('\n'),
+            images: p.images || [],
             is_featured: !!p.is_featured, is_new: !!p.is_new,
             is_bridal: !!p.is_bridal, is_soldout: !!p.is_soldout,
           });
@@ -68,7 +69,7 @@ export default function AdminProductForm() {
         collection_id: form.collection_id ? parseInt(form.collection_id) : null,
         sizes: form.sizes.split(',').map(s => s.trim()).filter(Boolean),
         colors: form.colors.split(',').map(s => s.trim()).filter(Boolean),
-        images: form.images.split('\n').map(s => s.trim()).filter(Boolean),
+        images: form.images,
       };
       const url = isEdit ? `/api/admin/products/${id}` : '/api/admin/products';
       const method = isEdit ? 'PUT' : 'POST';
@@ -157,11 +158,11 @@ export default function AdminProductForm() {
               <input type="text" name="colors" value={form.colors} onChange={handleChange} className={inputCls} placeholder="Đen,Trắng,Kem" />
             </div>
           </div>
-          <div>
-            <label className={labelCls}>URLs hình ảnh (mỗi URL một dòng)</label>
-            <textarea name="images" rows={4} value={form.images} onChange={handleChange} className={inputCls + ' resize-none'} placeholder="https://images.unsplash.com/...&#10;https://images.unsplash.com/..." />
-            <p className="text-[10px] text-warm-gray font-inter mt-1">Ảnh đầu tiên là ảnh chính. Khuyến nghị: Unsplash URL với ?w=700&h=900&fit=crop</p>
-          </div>
+          <ImageUploaderMulti
+            label="Hình ảnh sản phẩm"
+            value={form.images}
+            onChange={(images) => setForm(f => ({ ...f, images }))}
+          />
         </div>
 
         <div className="bg-white border border-gray-100 p-6">

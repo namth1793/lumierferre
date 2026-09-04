@@ -3,11 +3,14 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUser } from '../context/UserContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export default function Navbar() {
   const { count, setIsOpen } = useCart();
   const { lang, t, toggleLanguage } = useLanguage();
   const { user, openAuthDrawer, logout } = useUser();
+  const { settings } = useSiteSettings();
+  const siteName = settings.general.site_name;
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -95,7 +98,7 @@ export default function Navbar() {
   return (
     <>
       <div className="bg-black text-white text-center py-2 text-xs tracking-[0.15em] font-inter">
-        {t('announcement')}
+        {settings.general.announcement_text || t('announcement')}
       </div>
 
       <header
@@ -118,8 +121,9 @@ export default function Navbar() {
           </div>
 
           {/* Logo */}
-          <Link to="/" className="font-cormorant text-xl md:text-2xl font-light tracking-[0.25em] uppercase text-black flex-shrink-0 mx-auto lg:mx-0 lg:absolute lg:left-1/2 lg:-translate-x-1/2">
-            LUMIÈRE FERRÉ
+          <Link to="/" className="font-cormorant text-xl md:text-2xl font-light tracking-[0.25em] uppercase text-black flex-shrink-0 mx-auto lg:mx-0 lg:absolute lg:left-1/2 lg:-translate-x-1/2 flex items-center gap-2">
+            {settings.general.logo_url && <img src={settings.general.logo_url} alt={siteName} className="h-7 w-auto object-contain" />}
+            {siteName}
           </Link>
 
           {/* Right nav */}
@@ -254,7 +258,7 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="fixed inset-0 bg-white z-[100] overflow-y-auto">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <Link to="/" className="font-cormorant text-lg tracking-[0.2em] uppercase">LUMIÈRE FERRÉ</Link>
+            <Link to="/" className="font-cormorant text-lg tracking-[0.2em] uppercase">{siteName}</Link>
             <button onClick={() => setMobileOpen(false)} className="text-xl">✕</button>
           </div>
           <div className="px-6 py-6 space-y-1">

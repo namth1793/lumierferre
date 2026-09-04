@@ -16,6 +16,12 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminKiotViet from './pages/admin/AdminKiotViet';
+import AdminCategories from './pages/admin/AdminCategories';
+import AdminCollections from './pages/admin/AdminCollections';
+import AdminSettings from './pages/admin/AdminSettings';
+import AdminHomeContent from './pages/admin/AdminHomeContent';
+import AdminAboutContent from './pages/admin/AdminAboutContent';
+import AdminContactContent from './pages/admin/AdminContactContent';
 import AdminLayout from './pages/admin/AdminLayout';
 import { AdminProvider } from './context/AdminContext';
 import { UserProvider } from './context/UserContext';
@@ -51,6 +57,12 @@ export default function App() {
           <Route path="/admin/products/new" element={<AdminLayout><AdminProductForm /></AdminLayout>} />
           <Route path="/admin/products/:id/edit" element={<AdminLayout><AdminProductForm /></AdminLayout>} />
           <Route path="/admin/orders" element={<AdminLayout><AdminOrders /></AdminLayout>} />
+          <Route path="/admin/categories" element={<AdminLayout><AdminCategories /></AdminLayout>} />
+          <Route path="/admin/collections" element={<AdminLayout><AdminCollections /></AdminLayout>} />
+          <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
+          <Route path="/admin/content/home" element={<AdminLayout><AdminHomeContent /></AdminLayout>} />
+          <Route path="/admin/content/about" element={<AdminLayout><AdminAboutContent /></AdminLayout>} />
+          <Route path="/admin/content/contact" element={<AdminLayout><AdminContactContent /></AdminLayout>} />
           <Route path="/admin/kiotviet" element={<AdminLayout><AdminKiotViet /></AdminLayout>} />
           <Route path="*" element={<Home />} />
         </Routes>

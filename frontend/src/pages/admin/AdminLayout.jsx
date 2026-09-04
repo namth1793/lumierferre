@@ -1,16 +1,24 @@
 import { useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
+import { useSiteSettings } from '../../context/SiteSettingsContext';
 
 const NAV = [
   { label: 'Tổng Quan', href: '/admin/dashboard', icon: '◈' },
   { label: 'Sản Phẩm', href: '/admin/products', icon: '✦' },
+  { label: 'Danh Mục', href: '/admin/categories', icon: '▤' },
+  { label: 'Bộ Sưu Tập', href: '/admin/collections', icon: '❖' },
   { label: 'Đơn Hàng', href: '/admin/orders', icon: '◇' },
+  { label: 'Trang Chủ', href: '/admin/content/home', icon: '⌂' },
+  { label: 'Giới Thiệu', href: '/admin/content/about', icon: '☰' },
+  { label: 'Liên Hệ', href: '/admin/content/contact', icon: '✉' },
+  { label: 'Cài Đặt Chung', href: '/admin/settings', icon: '⚙' },
   { label: 'KiotViet', href: '/admin/kiotviet', icon: '⇄' },
 ];
 
 export default function AdminLayout({ children }) {
   const { admin, logout } = useAdmin();
+  const { settings } = useSiteSettings();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,12 +31,12 @@ export default function AdminLayout({ children }) {
   return (
     <div className="min-h-screen flex bg-gray-50 font-inter">
       {/* Sidebar */}
-      <aside className="w-56 bg-black text-white flex flex-col flex-shrink-0">
+      <aside className="w-56 bg-black text-white flex flex-col flex-shrink-0 h-screen sticky top-0">
         <div className="px-6 py-6 border-b border-white/10">
-          <p className="font-cormorant text-lg font-light tracking-[0.15em] uppercase">LUMIÈRE FERRÉ</p>
+          <p className="font-cormorant text-lg font-light tracking-[0.15em] uppercase">{settings.general.site_name}</p>
           <p className="text-[9px] tracking-[0.2em] uppercase text-white/50 mt-0.5">Admin Panel</p>
         </div>
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {NAV.map(item => (
             <Link
               key={item.href}

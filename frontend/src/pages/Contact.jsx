@@ -1,25 +1,14 @@
 import { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-
-const FB_URL = 'https://www.facebook.com/people/LUMIE-FERRE/61591943820241/';
-
-const STORES = [
-  {
-    city: 'Hà Nội',
-    address: '15 Tràng Tiền, Hoàn Kiếm, Hà Nội',
-    phone: '+84 24 3825 6789',
-    map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.097148767688!2d105.8509!3d21.0245!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjHCsDAxJzI4LjIiTiAxMDXCsDUxJzAzLjIiRQ!5e0!3m2!1svi!2svn!4v1234567890',
-  },
-  {
-    city: 'TP. Hồ Chí Minh',
-    address: '367 Nguyễn Đình Chiểu, Phường Bàn Cờ, TP. Hồ Chí Minh',
-    phone: '+84 28 3829 5678',
-    map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4!2d106.7009!3d10.7769!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTDCsDQ2JzM2LjgiTiAxMDbCsDQyJzAzLjIiRQ!5e0!3m2!1svi!2svn!4v1234567890',
-  },
-];
+import { useSiteSettings } from '../context/SiteSettingsContext';
 
 export default function Contact() {
   const { t } = useLanguage();
+  const { settings } = useSiteSettings();
+  const FB_URL = settings.general.facebook_url || 'https://www.facebook.com/';
+  const STORES = settings.contact.showrooms?.length ? settings.contact.showrooms : [
+    { city: 'Hà Nội', address: settings.general.footer_address_hn, phone: settings.general.footer_phone },
+  ];
   const SUBJECTS = [
     t('contact.subj.styling'), t('contact.subj.bespoke'), t('contact.subj.bridal'),
     t('contact.subj.shipping'), t('contact.subj.media'), t('contact.subj.other'),
@@ -135,8 +124,8 @@ export default function Contact() {
                 {[
                   { icon: '📍', labelKey: 'contact.address', value: STORES[activeStore].address },
                   { icon: '📞', labelKey: 'contact.phoneLabel', value: STORES[activeStore].phone },
-                  { icon: '🕐', labelKey: 'contact.hours', value: '9:00 — 21:00' + (t('footer.hours').includes('hàng ngày') ? ' hàng ngày' : ' daily') },
-                  { icon: '✉️', labelKey: 'contact.emailLabel', value: 'hello@lumierferre.com' },
+                  { icon: '🕐', labelKey: 'contact.hours', value: settings.general.footer_hours || t('footer.hours') },
+                  { icon: '✉️', labelKey: 'contact.emailLabel', value: settings.general.footer_email },
                 ].map(item => (
                   <div key={item.labelKey} className="flex gap-4">
                     <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
@@ -159,8 +148,8 @@ export default function Contact() {
                   <p className="text-sm font-inter">@lumierferre.vn</p>
                 </a>
                 {[
-                  { name: 'Instagram', handle: '@lumierferre' },
-                  { name: 'Pinterest', handle: 'Lumière Ferré' },
+                  { name: 'Instagram', handle: settings.general.instagram_handle },
+                  { name: 'Pinterest', handle: settings.general.pinterest_handle },
                 ].map(s => (
                   <div key={s.name} className="border border-gray-200 px-5 py-4 hover:border-black transition-colors cursor-pointer group">
                     <p className="text-xs tracking-[0.15em] uppercase font-inter mb-1 group-hover:text-black text-warm-gray">{s.name}</p>
@@ -173,8 +162,8 @@ export default function Contact() {
             {/* Bespoke CTA */}
             <div className="bg-cream p-8">
               <p className="text-[10px] tracking-[0.2em] uppercase font-inter text-warm-gray mb-3">{t('contact.bespokeLabel')}</p>
-              <h3 className="font-cormorant text-2xl font-light mb-3">{t('contact.bespokeTitle')}</h3>
-              <p className="text-sm text-gray-600 font-inter leading-relaxed mb-5">{t('contact.bespokeDesc')}</p>
+              <h3 className="font-cormorant text-2xl font-light mb-3">{settings.contact.bespoke_title || t('contact.bespokeTitle')}</h3>
+              <p className="text-sm text-gray-600 font-inter leading-relaxed mb-5">{settings.contact.bespoke_desc || t('contact.bespokeDesc')}</p>
               <button className="btn-dark">{t('contact.bookBtn')}</button>
             </div>
           </div>

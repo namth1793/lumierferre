@@ -5,7 +5,11 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const multer = require('multer');
 const kiotviet = require('./kiotviet');
+const cloudinaryStore = require('./cloudinary');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 
 const app = express();
 const PORT = process.env.PORT || 5033;
@@ -102,6 +106,11 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS site_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS kiotviet_customers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kiotviet_id INTEGER UNIQUE,
@@ -121,6 +130,7 @@ function ensureColumn(table, column, def) {
 }
 ensureColumn('categories', 'kiotviet_id', 'INTEGER');
 ensureColumn('categories', 'kiotviet_code', 'TEXT');
+ensureColumn('categories', 'image', 'TEXT');
 ensureColumn('products', 'kiotviet_id', 'INTEGER');
 ensureColumn('products', 'kiotviet_code', 'TEXT');
 ensureColumn('orders', 'kiotviet_order_id', 'INTEGER');
@@ -351,6 +361,77 @@ if (catCount === 0) {
   console.log('Database seeded successfully.');
 }
 
+// ── Site settings (nội dung trang chủ/giới thiệu/liên hệ do admin chỉnh sửa) ──
+const DEFAULT_SETTINGS = {
+  general: {
+    site_name: 'LUMIÈRE FERRÉ',
+    logo_url: '',
+    announcement_text: 'MIỄN PHÍ VẬN CHUYỂN CHO ĐƠN HÀNG TỪ 5.000.000₫',
+    footer_address_hn: '15 Tràng Tiền, Hoàn Kiếm, Hà Nội',
+    footer_address_hcm: '367 Nguyễn Đình Chiểu, Phường Bàn Cờ, TP. Hồ Chí Minh',
+    footer_phone: '+84 28 3829 5678',
+    footer_email: 'hello@lumierferre.com',
+    footer_hours: '9:00 — 21:00 hàng ngày',
+    facebook_url: 'https://www.facebook.com/people/LUMIE-FERRE/61591943820241/',
+    instagram_handle: '@lumierferre',
+    pinterest_handle: 'Lumière Ferré',
+  },
+  home: {
+    hero_slides: [
+      { image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1920&h=1080&fit=crop&q=90', label: 'BỘ SƯU TẬP XUÂN HÈ 2026', title: 'Rêverie', subtitle: 'Những giấc mơ lãng mạn qua từng đường nét tinh tế', cta_text: 'Khám Phá Rêverie', cta_href: '/bo-suu-tap/reverie-ss26' },
+      { image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1920&h=1080&fit=crop&q=90', label: 'BỘ SƯU TẬP THU ĐÔNG 2025', title: 'La Pureza', subtitle: 'Sự tinh khiết thuần túy trong từng thớ vải cao cấp', cta_text: 'Mua Sắm Ngay', cta_href: '/bo-suu-tap/la-pureza-fw25' },
+    ],
+    about_image: 'https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=700&h=900&fit=crop&q=85',
+    about_label: 'TRIẾT LÝ THƯƠNG HIỆU',
+    about_title1: 'Giao thoa',
+    about_title2: 'Đông Tây',
+    about_desc1: 'Lumière Ferré ra đời từ khát vọng kết hợp tinh hoa thời trang phương Tây với vẻ đẹp truyền thống phương Đông, tạo nên những thiết kế vượt thời gian.',
+    about_desc2: 'Mỗi sản phẩm là một tác phẩm nghệ thuật, được chế tác thủ công tỉ mỉ bởi những nghệ nhân lành nghề với chất liệu cao cấp nhất.',
+    quote_label: 'CHÂM NGÔN',
+    quote_text: '"Thời trang là ngôn ngữ không lời, nói lên vẻ đẹp và cá tính của mỗi người phụ nữ."',
+  },
+  about: {
+    hero_image: 'https://images.unsplash.com/photo-1475180098004-ca77a66827be?w=1920&h=1080&fit=crop&q=90',
+    story_label: 'CÂU CHUYỆN THƯƠNG HIỆU',
+    heading_line1: 'Nơi truyền thống',
+    heading_line2: 'gặp gỡ hiện đại',
+    story1: 'Lumière Ferré được thành lập vào năm 2018 bởi Isabelle Ferré, với khát vọng tạo nên những thiết kế thời trang cao cấp giao thoa giữa vẻ đẹp phương Đông và phương Tây.',
+    story2: 'Từ một xưởng may nhỏ tại Hà Nội, chúng tôi đã phát triển thành một thương hiệu thời trang được yêu thích, với những sản phẩm được chế tác thủ công tỉ mỉ bởi đội ngũ nghệ nhân lành nghề.',
+    story3: 'Ngày nay, Lumière Ferré tự hào mang đến những thiết kế vượt thời gian, kết hợp chất liệu cao cấp với kỹ thuật thủ công tinh xảo.',
+    atelier_image1: 'https://images.unsplash.com/photo-1551163943-3f6a855d1153?w=400&h=500&fit=crop&q=85',
+    atelier_image2: 'https://images.unsplash.com/photo-1545291730-faff8ca1d4b0?w=400&h=500&fit=crop&q=85',
+    atelier_title1: 'Nghệ thuật thủ công',
+    atelier_title2: 'trong từng đường kim mũi chỉ',
+    atelier_desc1: 'Mỗi sản phẩm Lumière Ferré đều được chế tác tại xưởng may riêng của chúng tôi, nơi các nghệ nhân dành hàng chục giờ để hoàn thiện từng chi tiết.',
+    atelier_desc2: 'Chúng tôi tin rằng sự hoàn hảo đến từ sự tỉ mỉ, và mỗi đường may đều mang trong nó câu chuyện của người thợ tạo ra nó.',
+    team: [
+      { name: 'Isabelle Ferré', role: 'Nhà Sáng Lập & Giám Đốc Sáng Tạo', image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=500&h=600&fit=crop' },
+      { name: 'Nguyễn Ánh Lumière', role: 'Giám Đốc Thiết Kế', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=500&h=600&fit=crop' },
+      { name: 'Trần Minh Laurent', role: 'Giám Đốc Nghệ Thuật', image: 'https://images.unsplash.com/photo-1566479179817-c0a8b8dfafb8?w=500&h=600&fit=crop' },
+    ],
+    stats: [
+      { num: '2018', label: 'Năm Thành Lập' },
+      { num: '50+', label: 'Nghệ Nhân' },
+      { num: '500+', label: 'Thiết Kế' },
+      { num: '2', label: 'Showroom' },
+    ],
+  },
+  contact: {
+    showrooms: [
+      { city: 'Hà Nội', address: '15 Tràng Tiền, Hoàn Kiếm, Hà Nội', phone: '+84 24 3825 6789', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.097148767688!2d105.8509!3d21.0245!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjHCsDAxJzI4LjIiTiAxMDXCsDUxJzAzLjIiRQ!5e0!3m2!1svi!2svn!4v1234567890' },
+      { city: 'TP. Hồ Chí Minh', address: '367 Nguyễn Đình Chiểu, Phường Bàn Cờ, TP. Hồ Chí Minh', phone: '+84 28 3829 5678', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4!2d106.7009!3d10.7769!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTDCsDQ2JzM2LjgiTiAxMDbCsDQyJzAzLjIiRQ!5e0!3m2!1svi!2svn!4v1234567890' },
+    ],
+    bespoke_title: 'Đặt May Riêng',
+    bespoke_desc: 'Chúng tôi cung cấp dịch vụ tư vấn và đặt may riêng cho những dịp đặc biệt. Đặt lịch hẹn với đội ngũ thiết kế của chúng tôi.',
+  },
+};
+
+const getSetting = db.prepare('SELECT value FROM site_settings WHERE key = ?');
+const insertSetting = db.prepare('INSERT INTO site_settings (key, value) VALUES (?, ?)');
+for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+  if (!getSetting.get(key)) insertSetting.run(key, JSON.stringify(value));
+}
+
 // Patch broken image URLs (runs every startup to fix existing DB)
 db.prepare(`
   UPDATE products SET images = ? WHERE slug = 'vay-cocktail-metallic'
@@ -368,6 +449,13 @@ app.get('/api/categories', (_req, res) => {
 
 app.get('/api/collections', (_req, res) => {
   res.json(db.prepare('SELECT * FROM collections ORDER BY id DESC').all());
+});
+
+app.get('/api/settings', (_req, res) => {
+  const rows = db.prepare('SELECT key, value FROM site_settings').all();
+  const settings = {};
+  for (const r of rows) { try { settings[r.key] = JSON.parse(r.value); } catch { settings[r.key] = null; } }
+  res.json(settings);
 });
 
 app.get('/api/products', (req, res) => {
@@ -658,6 +746,82 @@ app.get('/api/admin/contacts', requireAdmin, (_req, res) => {
 
 app.get('/api/admin/subscribers', requireAdmin, (_req, res) => {
   res.json(db.prepare('SELECT * FROM subscribers ORDER BY created_at DESC').all());
+});
+
+// ─── Upload ảnh (Cloudinary) ───────────────────────────────────────
+app.post('/api/admin/upload', requireAdmin, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Không có file được gửi lên.' });
+  if (!cloudinaryStore.isConfigured()) {
+    return res.status(400).json({ error: 'Chưa cấu hình Cloudinary. Vui lòng điền CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET trong backend/.env' });
+  }
+  try {
+    const result = await cloudinaryStore.uploadBuffer(req.file.buffer);
+    res.json({ url: result.secure_url });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Site settings (Home / About / Contact / General) ──────────────
+app.get('/api/admin/settings/:key', requireAdmin, (req, res) => {
+  const row = getSetting.get(req.params.key);
+  if (!row) return res.status(404).json({ error: 'Không tìm thấy mục cài đặt.' });
+  res.json(JSON.parse(row.value));
+});
+
+app.put('/api/admin/settings/:key', requireAdmin, (req, res) => {
+  const { key } = req.params;
+  db.prepare(`
+    INSERT INTO site_settings (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(key, JSON.stringify(req.body));
+  res.json({ success: true });
+});
+
+// ─── Danh mục (Categories) ──────────────────────────────────────────
+app.post('/api/admin/categories', requireAdmin, (req, res) => {
+  const { name, description, image, sort_order } = req.body;
+  if (!name) return res.status(400).json({ error: 'Thiếu tên danh mục.' });
+  try {
+    const result = db.prepare('INSERT INTO categories (name, slug, description, image, sort_order) VALUES (?,?,?,?,?)')
+      .run(name, slugify(name), description || '', image || '', sort_order || 0);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.put('/api/admin/categories/:id', requireAdmin, (req, res) => {
+  const { name, description, image, sort_order } = req.body;
+  db.prepare('UPDATE categories SET name=?, description=?, image=?, sort_order=? WHERE id=?')
+    .run(name, description || '', image || '', sort_order || 0, req.params.id);
+  res.json({ success: true });
+});
+
+app.delete('/api/admin/categories/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM categories WHERE id=?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ─── Bộ sưu tập (Collections) ────────────────────────────────────────
+app.post('/api/admin/collections', requireAdmin, (req, res) => {
+  const { name, season, description, cover_image } = req.body;
+  if (!name) return res.status(400).json({ error: 'Thiếu tên bộ sưu tập.' });
+  try {
+    const result = db.prepare('INSERT INTO collections (name, slug, season, description, cover_image) VALUES (?,?,?,?,?)')
+      .run(name, slugify(name), season || '', description || '', cover_image || '');
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.put('/api/admin/collections/:id', requireAdmin, (req, res) => {
+  const { name, season, description, cover_image } = req.body;
+  db.prepare('UPDATE collections SET name=?, season=?, description=?, cover_image=? WHERE id=?')
+    .run(name, season || '', description || '', cover_image || '', req.params.id);
+  res.json({ success: true });
+});
+
+app.delete('/api/admin/collections/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM collections WHERE id=?').run(req.params.id);
+  res.json({ success: true });
 });
 
 // ─── KiotViet Integration ──────────────────────────────────────────
