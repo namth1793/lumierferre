@@ -97,9 +97,11 @@ export default function Navbar() {
 
   return (
     <>
-      <div className="bg-black text-white text-center py-2 text-xs tracking-[0.15em] font-inter">
-        {settings.general.announcement_text || t('announcement')}
-      </div>
+      {settings.general.announcement_text && (
+        <div className="bg-black text-white text-center py-2 text-xs tracking-[0.15em] font-inter">
+          {settings.general.announcement_text}
+        </div>
+      )}
 
       <header
         className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? 'shadow-sm' : ''}`}

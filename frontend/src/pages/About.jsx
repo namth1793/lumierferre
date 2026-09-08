@@ -24,8 +24,8 @@ export default function About() {
         <img src={about.hero_image} alt={settings.general.site_name} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
-          <p className="text-[10px] tracking-[0.4em] uppercase font-inter mb-4 opacity-80">{about.story_label || t('about.storyLabel')}</p>
-          <h1 className="font-cormorant text-6xl md:text-8xl font-light tracking-[0.08em]">{t('about.title')}</h1>
+          <p className="text-[10px] tracking-[0.4em] uppercase font-inter mb-4 opacity-80">{about.story_label}</p>
+          <h1 className="font-cormorant text-6xl md:text-8xl font-light leading-[1.15] tracking-[0.08em]">{t('about.title')}</h1>
         </div>
       </section>
 
@@ -33,13 +33,13 @@ export default function About() {
       <section className="max-w-[900px] mx-auto px-6 py-24 text-center">
         <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-8">{t('about.founded')}</p>
         <h2 className="font-cormorant text-4xl md:text-5xl font-light leading-relaxed mb-10">
-          {about.heading_line1 || t('about.headingLine1')}<br /><em>{about.heading_line2 || t('about.headingLine2')}</em>
+          {about.heading_line1}<br /><em>{about.heading_line2}</em>
         </h2>
         <div className="w-12 h-0.5 bg-black mx-auto mb-10" />
         <div className="space-y-6 text-gray-600 font-inter text-sm leading-loose text-left md:text-center">
-          <p>{about.story1 || t('about.story1')}</p>
-          <p>{about.story2 || t('about.story2')}</p>
-          <p>{about.story3 || t('about.story3')}</p>
+          <p>{about.story1}</p>
+          <p>{about.story2}</p>
+          <p>{about.story3}</p>
         </div>
       </section>
 
@@ -68,11 +68,11 @@ export default function About() {
           <div className="space-y-6">
             <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray">{t('about.atelierLabel')}</p>
             <h2 className="font-cormorant text-4xl font-light leading-tight">
-              {about.atelier_title1 || t('about.atelierTitle1')}<br />{about.atelier_title2 || t('about.atelierTitle2')}
+              {about.atelier_title1}<br />{about.atelier_title2}
             </h2>
             <div className="w-10 h-0.5 bg-black" />
-            <p className="text-sm text-gray-600 font-inter leading-relaxed">{about.atelier_desc1 || t('about.atelierDesc1')}</p>
-            <p className="text-sm text-gray-600 font-inter leading-relaxed">{about.atelier_desc2 || t('about.atelierDesc2')}</p>
+            <p className="text-sm text-gray-600 font-inter leading-relaxed">{about.atelier_desc1}</p>
+            <p className="text-sm text-gray-600 font-inter leading-relaxed">{about.atelier_desc2}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <img src={about.atelier_image1} alt="Atelier" className="w-full h-64 object-cover" />
@@ -105,7 +105,7 @@ export default function About() {
         <div className="max-w-[1200px] mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {STATS.map((s, i) => (
             <div key={i}>
-              <p className="font-cormorant text-5xl font-light mb-2">{s.num}</p>
+              <p className="font-cormorant text-5xl font-light leading-tight mb-2">{s.num}</p>
               <p className="text-[10px] tracking-[0.25em] uppercase font-inter text-white/60">{s.label}</p>
             </div>
           ))}
@@ -115,7 +115,7 @@ export default function About() {
       {/* CTA */}
       <section className="py-24 px-6 text-center">
         <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-4">{t('about.ctaLabel')}</p>
-        <h2 className="font-cormorant text-4xl md:text-5xl font-light mb-8">{t('about.ctaTitle')}</h2>
+        <h2 className="font-cormorant text-4xl md:text-5xl font-light leading-tight mb-8">{t('about.ctaTitle')}</h2>
         <div className="flex flex-wrap gap-4 justify-center">
           <Link to="/san-pham" className="btn-dark">{t('about.ctaBtn1')}</Link>
           <Link to="/lien-he" className="btn-outline">{t('about.ctaBtn2')}</Link>

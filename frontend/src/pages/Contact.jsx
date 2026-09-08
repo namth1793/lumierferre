@@ -40,7 +40,7 @@ export default function Contact() {
     <div>
       <div className="border-b border-gray-100 py-14 text-center px-6">
         <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-3">{t('contact.weListenLabel')}</p>
-        <h1 className="font-cormorant text-5xl md:text-6xl font-light tracking-[0.06em] uppercase">{t('contact.title')}</h1>
+        <h1 className="font-cormorant text-5xl md:text-6xl font-light leading-tight tracking-[0.06em] uppercase">{t('contact.title')}</h1>
       </div>
 
       <div className="max-w-[1200px] mx-auto px-6 py-20">
@@ -124,7 +124,7 @@ export default function Contact() {
                 {[
                   { icon: '📍', labelKey: 'contact.address', value: STORES[activeStore].address },
                   { icon: '📞', labelKey: 'contact.phoneLabel', value: STORES[activeStore].phone },
-                  { icon: '🕐', labelKey: 'contact.hours', value: settings.general.footer_hours || t('footer.hours') },
+                  { icon: '🕐', labelKey: 'contact.hours', value: settings.general.footer_hours },
                   { icon: '✉️', labelKey: 'contact.emailLabel', value: settings.general.footer_email },
                 ].map(item => (
                   <div key={item.labelKey} className="flex gap-4">
@@ -162,8 +162,8 @@ export default function Contact() {
             {/* Bespoke CTA */}
             <div className="bg-cream p-8">
               <p className="text-[10px] tracking-[0.2em] uppercase font-inter text-warm-gray mb-3">{t('contact.bespokeLabel')}</p>
-              <h3 className="font-cormorant text-2xl font-light mb-3">{settings.contact.bespoke_title || t('contact.bespokeTitle')}</h3>
-              <p className="text-sm text-gray-600 font-inter leading-relaxed mb-5">{settings.contact.bespoke_desc || t('contact.bespokeDesc')}</p>
+              <h3 className="font-cormorant text-2xl font-light mb-3">{settings.contact.bespoke_title}</h3>
+              <p className="text-sm text-gray-600 font-inter leading-relaxed mb-5">{settings.contact.bespoke_desc}</p>
               <button className="btn-dark">{t('contact.bookBtn')}</button>
             </div>
           </div>

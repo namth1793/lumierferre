@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        cormorant: ['"Cormorant Garant"', 'Georgia', 'serif'],
+        cormorant: ['"Cormorant Garamond"', 'Georgia', 'serif'],
         inter: ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {

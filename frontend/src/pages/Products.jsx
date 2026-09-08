@@ -69,7 +69,7 @@ export default function Products() {
     <div className="min-h-screen">
       <div className="border-b border-gray-100 py-10 text-center px-6">
         <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-2">Lumière Ferré</p>
-        <h1 className="font-cormorant text-4xl md:text-5xl font-light tracking-[0.08em] uppercase">{pageTitle}</h1>
+        <h1 className="font-cormorant text-4xl md:text-5xl font-light leading-tight tracking-[0.08em] uppercase">{pageTitle}</h1>
         {total > 0 && <p className="text-xs text-warm-gray font-inter mt-3 tracking-wider">{t('products.items', { n: total })}</p>}
       </div>
 

@@ -110,7 +110,7 @@ export default function Footer() {
               <p>{g.footer_address_hcm}</p>
               <p>{g.footer_phone}</p>
               <p>{g.footer_email}</p>
-              <p>{g.footer_hours || t('footer.hours')}</p>
+              <p>{g.footer_hours}</p>
             </address>
             <div className="flex gap-4 mt-5">
               <a href={FB_URL} target="_blank" rel="noopener noreferrer" className="text-[10px] tracking-[0.1em] uppercase font-inter text-white/50 hover:text-white transition-colors">F</a>

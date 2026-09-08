@@ -48,7 +48,7 @@ export default function Collections() {
         <div className="absolute inset-0 bg-black/35" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
           <p className="text-[10px] tracking-[0.4em] uppercase font-inter mb-5 opacity-80">{t(info.seasonKey)}</p>
-          <h1 className="font-cormorant text-7xl md:text-9xl font-light tracking-[0.06em] hero-text-shadow">{info.title}</h1>
+          <h1 className="font-cormorant text-7xl md:text-9xl font-light leading-[1.15] tracking-[0.06em] hero-text-shadow">{info.title}</h1>
           <p className="font-cormorant text-xl italic font-light opacity-85 mt-4 max-w-lg">{t(info.subtitleKey)}</p>
         </div>
       </section>
@@ -123,7 +123,7 @@ export default function Collections() {
                   <div className="absolute inset-0 bg-black/25 group-hover:bg-black/40 transition-colors duration-300" />
                   <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
                     <p className="text-[10px] tracking-[0.3em] uppercase font-inter opacity-70 mb-2">{t(col.seasonKey)}</p>
-                    <h3 className="font-cormorant text-4xl font-light">{col.title}</h3>
+                    <h3 className="font-cormorant text-4xl font-light leading-tight">{col.title}</h3>
                   </div>
                 </Link>
               ))}

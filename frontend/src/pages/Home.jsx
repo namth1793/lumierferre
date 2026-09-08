@@ -60,7 +60,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/30" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
           <p className="text-[10px] tracking-[0.4em] uppercase font-inter mb-5 opacity-90">{slide.label}</p>
-          <h1 className="font-cormorant text-6xl md:text-8xl lg:text-9xl font-light tracking-[0.08em] hero-text-shadow mb-4">{slide.title}</h1>
+          <h1 className="font-cormorant text-6xl md:text-8xl lg:text-9xl font-light leading-[1.15] tracking-[0.08em] hero-text-shadow mb-4">{slide.title}</h1>
           <p className="font-cormorant text-lg md:text-xl italic font-light opacity-90 mb-10 max-w-md">{slide.subtitle}</p>
           <Link to={slide.cta_href || '/san-pham'} className="btn-outline-white">{slide.cta_text}</Link>
         </div>
@@ -118,7 +118,7 @@ export default function Home() {
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors duration-300" />
               <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
                 <p className="text-[10px] tracking-[0.3em] uppercase font-inter opacity-80 mb-2">{col.season}</p>
-                <h3 className="font-cormorant text-3xl font-light tracking-[0.1em] uppercase">{col.name}</h3>
+                <h3 className="font-cormorant text-3xl font-light leading-tight tracking-[0.1em] uppercase">{col.name}</h3>
                 <span className="inline-block mt-4 text-[10px] tracking-[0.25em] uppercase font-inter border-b border-white pb-0.5 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
                   {t('home.exploreNow')}
                 </span>
@@ -175,9 +175,9 @@ export default function Home() {
 
       {/* ── QUOTE ── */}
       <section className="py-24 bg-black text-white text-center px-6">
-        <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-white/50 mb-8">{home.quote_label || t('home.motto')}</p>
+        <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-white/50 mb-8">{home.quote_label}</p>
         <blockquote className="font-cormorant text-3xl md:text-5xl font-light italic leading-relaxed max-w-3xl mx-auto">
-          {home.quote_text || t('home.quote')}
+          {home.quote_text}
         </blockquote>
         <p className="mt-8 text-[10px] tracking-[0.25em] uppercase font-inter text-white/50">— {settings.general.site_name}</p>
       </section>
