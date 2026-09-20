@@ -1,7 +1,7 @@
 {
   "name": "lumierferre-backend",
   "version": "1.0.0",
-  "description": "Lumière Ferré Fashion Backend",
+  "description": "LUMIE FERRE Fashion Backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

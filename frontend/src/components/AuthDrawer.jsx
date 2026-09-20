@@ -104,7 +104,7 @@ export default function AuthDrawer() {
               <div className="pt-4 border-t border-gray-100">
                 <p className="text-[9px] tracking-[0.2em] uppercase font-inter text-warm-gray mb-1">Thành viên từ</p>
                 <p className="text-xs font-inter">
-                  {user.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : 'LUMIÈRE FERRÉ Member'}
+                  {user.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : 'LUMIE FERRE Member'}
                 </p>
               </div>
             </div>

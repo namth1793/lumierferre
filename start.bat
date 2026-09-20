@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo   LUMIERE FERRE - Khoi dong
+echo   LUMIE FERRE - Khoi dong
 echo ============================================
 echo.
 echo Backend : http://localhost:5033

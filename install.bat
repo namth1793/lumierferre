@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo   LUMIERE FERRE - Cai dat lan dau
+echo   LUMIE FERRE - Cai dat lan dau
 echo ============================================
 echo.
 

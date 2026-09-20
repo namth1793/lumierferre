@@ -364,7 +364,7 @@ if (catCount === 0) {
 // ── Site settings (nội dung trang chủ/giới thiệu/liên hệ do admin chỉnh sửa) ──
 const DEFAULT_SETTINGS = {
   general: {
-    site_name: 'LUMIÈRE FERRÉ',
+    site_name: 'LUMIE FERRE',
     logo_url: '',
     announcement_text: 'MIỄN PHÍ VẬN CHUYỂN CHO ĐƠN HÀNG TỪ 5.000.000₫',
     footer_address_hn: '15 Tràng Tiền, Hoàn Kiếm, Hà Nội',
@@ -374,7 +374,7 @@ const DEFAULT_SETTINGS = {
     footer_hours: '9:00 — 21:00 hàng ngày',
     facebook_url: 'https://www.facebook.com/people/LUMIE-FERRE/61591943820241/',
     instagram_handle: '@lumierferre',
-    pinterest_handle: 'Lumière Ferré',
+    pinterest_handle: 'LUMIE FERRE',
   },
   home: {
     hero_slides: [
@@ -385,7 +385,7 @@ const DEFAULT_SETTINGS = {
     about_label: 'TRIẾT LÝ THƯƠNG HIỆU',
     about_title1: 'Giao thoa',
     about_title2: 'Đông Tây',
-    about_desc1: 'Lumière Ferré ra đời từ khát vọng kết hợp tinh hoa thời trang phương Tây với vẻ đẹp truyền thống phương Đông, tạo nên những thiết kế vượt thời gian.',
+    about_desc1: 'LUMIE FERRE ra đời từ khát vọng kết hợp tinh hoa thời trang phương Tây với vẻ đẹp truyền thống phương Đông, tạo nên những thiết kế vượt thời gian.',
     about_desc2: 'Mỗi sản phẩm là một tác phẩm nghệ thuật, được chế tác thủ công tỉ mỉ bởi những nghệ nhân lành nghề với chất liệu cao cấp nhất.',
     quote_label: 'CHÂM NGÔN',
     quote_text: '"Thời trang là ngôn ngữ không lời, nói lên vẻ đẹp và cá tính của mỗi người phụ nữ."',
@@ -395,14 +395,14 @@ const DEFAULT_SETTINGS = {
     story_label: 'CÂU CHUYỆN THƯƠNG HIỆU',
     heading_line1: 'Nơi truyền thống',
     heading_line2: 'gặp gỡ hiện đại',
-    story1: 'Lumière Ferré được thành lập vào năm 2018 bởi Isabelle Ferré, với khát vọng tạo nên những thiết kế thời trang cao cấp giao thoa giữa vẻ đẹp phương Đông và phương Tây.',
+    story1: 'LUMIE FERRE được thành lập vào năm 2018 bởi Isabelle Ferré, với khát vọng tạo nên những thiết kế thời trang cao cấp giao thoa giữa vẻ đẹp phương Đông và phương Tây.',
     story2: 'Từ một xưởng may nhỏ tại Hà Nội, chúng tôi đã phát triển thành một thương hiệu thời trang được yêu thích, với những sản phẩm được chế tác thủ công tỉ mỉ bởi đội ngũ nghệ nhân lành nghề.',
-    story3: 'Ngày nay, Lumière Ferré tự hào mang đến những thiết kế vượt thời gian, kết hợp chất liệu cao cấp với kỹ thuật thủ công tinh xảo.',
+    story3: 'Ngày nay, LUMIE FERRE tự hào mang đến những thiết kế vượt thời gian, kết hợp chất liệu cao cấp với kỹ thuật thủ công tinh xảo.',
     atelier_image1: 'https://images.unsplash.com/photo-1551163943-3f6a855d1153?w=400&h=500&fit=crop&q=85',
     atelier_image2: 'https://images.unsplash.com/photo-1545291730-faff8ca1d4b0?w=400&h=500&fit=crop&q=85',
     atelier_title1: 'Nghệ thuật thủ công',
     atelier_title2: 'trong từng đường kim mũi chỉ',
-    atelier_desc1: 'Mỗi sản phẩm Lumière Ferré đều được chế tác tại xưởng may riêng của chúng tôi, nơi các nghệ nhân dành hàng chục giờ để hoàn thiện từng chi tiết.',
+    atelier_desc1: 'Mỗi sản phẩm LUMIE FERRE đều được chế tác tại xưởng may riêng của chúng tôi, nơi các nghệ nhân dành hàng chục giờ để hoàn thiện từng chi tiết.',
     atelier_desc2: 'Chúng tôi tin rằng sự hoàn hảo đến từ sự tỉ mỉ, và mỗi đường may đều mang trong nó câu chuyện của người thợ tạo ra nó.',
     team: [
       { name: 'Isabelle Ferré', role: 'Nhà Sáng Lập & Giám Đốc Sáng Tạo', image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=500&h=600&fit=crop' },
@@ -431,6 +431,13 @@ const insertSetting = db.prepare('INSERT INTO site_settings (key, value) VALUES 
 for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
   if (!getSetting.get(key)) insertSetting.run(key, JSON.stringify(value));
 }
+
+// Đổi tên thương hiệu cũ trong cài đặt đã lưu (DB đã có sẵn trên Railway)
+db.prepare(`
+  UPDATE site_settings
+  SET value = REPLACE(REPLACE(REPLACE(value, 'LUMIÈRE FERRÉ', 'LUMIE FERRE'), 'Lumière Ferré', 'LUMIE FERRE'), 'LUMIERE FERRE', 'LUMIE FERRE')
+  WHERE value LIKE '%LUMIÈRE FERRÉ%' OR value LIKE '%Lumière Ferré%' OR value LIKE '%LUMIERE FERRE%'
+`).run();
 
 // Patch broken image URLs (runs every startup to fix existing DB)
 db.prepare(`
@@ -985,5 +992,5 @@ if (lacePatch && lacePatch.images && lacePatch.images.includes('1566479179817'))
 }
 
 app.listen(PORT, () => {
-  console.log(`✦ Lumière Ferré Backend → http://localhost:${PORT}`);
+  console.log(`✦ LUMIE FERRE Backend → http://localhost:${PORT}`);
 });

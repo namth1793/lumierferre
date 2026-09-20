@@ -32,7 +32,7 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-cream flex items-center justify-center px-4">
       <div className="bg-white w-full max-w-sm p-10 shadow-sm">
         <div className="text-center mb-10">
-          <p className="font-cormorant text-2xl font-light tracking-[0.25em] uppercase mb-1">LUMIÈRE FERRÉ</p>
+          <p className="font-cormorant text-2xl font-light tracking-[0.25em] uppercase mb-1">LUMIE FERRE</p>
           <p className="text-[10px] tracking-[0.25em] uppercase font-inter text-warm-gray">Admin Panel</p>
         </div>
 
