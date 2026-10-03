@@ -36,7 +36,13 @@ export default function AdminCategories() {
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Xóa danh mục "${name}"? Sản phẩm thuộc danh mục này sẽ không còn danh mục.`)) return;
-    await authFetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+    try {
+      const res = await authFetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        window.alert(data.error || 'Không thể xóa. Vui lòng thử lại.');
+      }
+    } catch { window.alert('Không thể kết nối máy chủ'); }
     fetchCategories();
   };
 

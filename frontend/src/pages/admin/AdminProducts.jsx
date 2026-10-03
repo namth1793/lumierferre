@@ -29,7 +29,8 @@ export default function AdminProducts() {
     if (!window.confirm(`Xóa sản phẩm "${name}"?`)) return;
     setDeleting(id);
     try {
-      await authFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
+      if (!res.ok) alert((await res.json().catch(() => ({}))).error || 'Lỗi khi xóa sản phẩm');
       fetchProducts();
     } catch { alert('Lỗi khi xóa sản phẩm'); }
     finally { setDeleting(null); }

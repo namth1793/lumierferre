@@ -29,7 +29,7 @@ export default function AdminContactContent() {
     try {
       const res = await authFetch('/api/admin/settings/contact', { method: 'PUT', body: JSON.stringify(form) });
       if (res.ok) { await refetch(); setSaved(true); setTimeout(() => setSaved(false), 2500); }
-      else setError('Lỗi khi lưu nội dung');
+      else setError((await res.json().catch(() => ({}))).error || 'Lỗi khi lưu nội dung');
     } catch { setError('Không thể kết nối máy chủ'); }
     finally { setSaving(false); }
   };

@@ -80,9 +80,10 @@ export default function AdminOrders() {
     setSaving(true);
     try {
       const order = orders.find(o => o.id === id);
-      await authFetch(`/api/admin/orders/${id}`, {
+      const res = await authFetch(`/api/admin/orders/${id}`, {
         method: 'PUT', body: JSON.stringify({ ...order, ...updates }),
       });
+      if (!res.ok) { alert((await res.json().catch(() => ({}))).error || 'Lỗi khi cập nhật đơn hàng'); return; }
       fetchOrders();
       if (selected?.id === id) setSelected(o => ({ ...o, ...updates }));
     } catch { alert('Lỗi khi cập nhật đơn hàng'); }
@@ -91,9 +92,12 @@ export default function AdminOrders() {
 
   const deleteOrder = async (id) => {
     if (!window.confirm('Xóa đơn hàng này?')) return;
-    await authFetch(`/api/admin/orders/${id}`, { method: 'DELETE' });
-    setSelected(null);
-    fetchOrders();
+    try {
+      const res = await authFetch(`/api/admin/orders/${id}`, { method: 'DELETE' });
+      if (!res.ok) { alert((await res.json().catch(() => ({}))).error || 'Lỗi khi xóa đơn hàng'); return; }
+      setSelected(null);
+      fetchOrders();
+    } catch { alert('Không thể kết nối máy chủ'); }
   };
 
   const handleCreateOrder = async (e) => {

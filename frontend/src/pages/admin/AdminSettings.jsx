@@ -23,7 +23,7 @@ export default function AdminSettings() {
     try {
       const res = await authFetch('/api/admin/settings/general', { method: 'PUT', body: JSON.stringify(form) });
       if (res.ok) { await refetch(); setSaved(true); setTimeout(() => setSaved(false), 2500); }
-      else setError('Lỗi khi lưu cài đặt');
+      else setError((await res.json().catch(() => ({}))).error || 'Lỗi khi lưu cài đặt');
     } catch { setError('Không thể kết nối máy chủ'); }
     finally { setSaving(false); }
   };

@@ -14,13 +14,15 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 *
 const app = express();
 const PORT = process.env.PORT || 5033;
 
-const dataDir = path.join(__dirname, 'data');
+// Trên Railway, gắn Volume rồi set Mount Path trùng với biến DATA_DIR bên dưới
+// (vd: cả hai đều là /data) để DB không mất khi redeploy.
+const dataDir = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 const db = new Database(path.join(dataDir, 'lumierferre.db'));
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS categories (
@@ -711,12 +713,15 @@ app.post('/api/admin/orders', requireAdmin, async (req, res) => {
     items, subtotal, shipping, total, status, payment_method, payment_status, notes } = req.body;
   if (!customer_name) return res.status(400).json({ error: 'Thiếu tên khách hàng.' });
   const order_number = 'LF' + Date.now().toString().slice(-8);
-  const result = db.prepare(`INSERT INTO orders (order_number,customer_name,customer_email,customer_phone,
+  let result;
+  try {
+    result = db.prepare(`INSERT INTO orders (order_number,customer_name,customer_email,customer_phone,
     customer_address,items,subtotal,shipping,total,status,payment_method,payment_status,notes)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(order_number, customer_name, customer_email||'',
     customer_phone||'', customer_address||'', JSON.stringify(items||[]),
     subtotal||0, shipping||0, total||0, status||'pending', payment_method||'bank_transfer',
     payment_status||'unpaid', notes||'');
+  } catch (e) { return res.status(500).json({ error: e.message }); }
 
   const orderId = result.lastInsertRowid;
   let kiotvietSync = { status: 'not_configured' };
@@ -793,7 +798,9 @@ app.post('/api/admin/categories', requireAdmin, (req, res) => {
     const result = db.prepare('INSERT INTO categories (name, slug, description, image, sort_order) VALUES (?,?,?,?,?)')
       .run(name, slugify(name), description || '', image || '', sort_order || 0);
     res.json({ success: true, id: result.lastInsertRowid });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Danh mục này đã tồn tại.' : e.message });
+  }
 });
 
 app.put('/api/admin/categories/:id', requireAdmin, (req, res) => {
@@ -804,8 +811,14 @@ app.put('/api/admin/categories/:id', requireAdmin, (req, res) => {
 });
 
 app.delete('/api/admin/categories/:id', requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM categories WHERE id=?').run(req.params.id);
-  res.json({ success: true });
+  try {
+    // Gỡ liên kết sản phẩm trước, nếu không SQLite chặn xóa vì khóa ngoại
+    db.transaction(() => {
+      db.prepare('UPDATE products SET category_id=NULL WHERE category_id=?').run(req.params.id);
+      db.prepare('DELETE FROM categories WHERE id=?').run(req.params.id);
+    })();
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Bộ sưu tập (Collections) ────────────────────────────────────────
@@ -816,7 +829,9 @@ app.post('/api/admin/collections', requireAdmin, (req, res) => {
     const result = db.prepare('INSERT INTO collections (name, slug, season, description, cover_image) VALUES (?,?,?,?,?)')
       .run(name, slugify(name), season || '', description || '', cover_image || '');
     res.json({ success: true, id: result.lastInsertRowid });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Bộ sưu tập này đã tồn tại.' : e.message });
+  }
 });
 
 app.put('/api/admin/collections/:id', requireAdmin, (req, res) => {
@@ -827,8 +842,14 @@ app.put('/api/admin/collections/:id', requireAdmin, (req, res) => {
 });
 
 app.delete('/api/admin/collections/:id', requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM collections WHERE id=?').run(req.params.id);
-  res.json({ success: true });
+  try {
+    // Gỡ liên kết sản phẩm trước, nếu không SQLite chặn xóa vì khóa ngoại
+    db.transaction(() => {
+      db.prepare('UPDATE products SET collection_id=NULL WHERE collection_id=?').run(req.params.id);
+      db.prepare('DELETE FROM collections WHERE id=?').run(req.params.id);
+    })();
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── KiotViet Integration ──────────────────────────────────────────
@@ -990,6 +1011,18 @@ if (lacePatch && lacePatch.images && lacePatch.images.includes('1566479179817'))
     JSON.stringify(['https://images.unsplash.com/photo-1475180098004-ca77a66827be?w=700&h=900&fit=crop','https://images.unsplash.com/photo-1445205170230-053b83016050?w=700&h=900&fit=crop'])
   );
 }
+
+// ─── Xử lý lỗi chung: luôn trả JSON để frontend hiện đúng thông báo ──
+app.use('/api', (_req, res) => res.status(404).json({ error: 'Không tìm thấy API.' }));
+
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File quá lớn (tối đa 8MB).' });
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Dữ liệu gửi lên quá lớn.' });
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Dữ liệu gửi lên không hợp lệ.' });
+  if (String(err.message).includes('NOT NULL')) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
+  res.status(500).json({ error: err.message || 'Lỗi máy chủ.' });
+});
 
 app.listen(PORT, () => {
   console.log(`✦ LUMIE FERRE Backend → http://localhost:${PORT}`);
