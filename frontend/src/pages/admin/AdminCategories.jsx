@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAdmin } from '../../context/AdminContext';
+import { useCatalog } from '../../context/CatalogContext';
 import { ImageUploaderSingle } from '../../components/admin/ImageUploader';
 
 const EMPTY = { id: null, name: '', description: '', image: '', sort_order: 0 };
 
 export default function AdminCategories() {
   const { authFetch } = useAdmin();
+  const { refetch: refetchCatalog } = useCatalog();
+  const [notice, setNotice] = useState('');
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
@@ -28,7 +31,10 @@ export default function AdminCategories() {
       const method = editing.id ? 'PUT' : 'POST';
       const res = await authFetch(url, { method, body: JSON.stringify(editing) });
       const data = await res.json();
-      if (res.ok) { setEditing(null); fetchCategories(); }
+      if (res.ok) {
+        setEditing(null); fetchCategories(); await refetchCatalog();
+        setNotice('Đã lưu và cập nhật lên website.'); setTimeout(() => setNotice(''), 3000);
+      }
       else setError(data.error || 'Lỗi khi lưu danh mục');
     } catch { setError('Không thể kết nối máy chủ'); }
     finally { setSaving(false); }
@@ -44,6 +50,7 @@ export default function AdminCategories() {
       }
     } catch { window.alert('Không thể kết nối máy chủ'); }
     fetchCategories();
+    refetchCatalog();
   };
 
   const inputCls = "w-full border border-gray-200 px-4 py-3 text-sm font-inter outline-none focus:border-black transition-colors";
@@ -58,6 +65,8 @@ export default function AdminCategories() {
         </div>
         <button onClick={() => setEditing({ ...EMPTY })} className="btn-dark">+ Thêm Danh Mục</button>
       </div>
+
+      {notice && <p className="mb-6 text-sm font-inter text-green-600">{notice}</p>}
 
       {editing && (
         <form onSubmit={handleSave} className="bg-white border border-gray-100 p-6 mb-8 space-y-5 max-w-xl">

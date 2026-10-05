@@ -1,15 +1,16 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const AdminContext = createContext(null);
 
 export function AdminProvider({ children }) {
-  const [admin, setAdmin] = useState(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem('lf_admin_token');
-    const user = localStorage.getItem('lf_admin_user');
-    if (token && user) setAdmin({ token, ...JSON.parse(user) });
-  }, []);
+  // Đọc phiên đăng nhập ngay lần render đầu, nếu không F5 trang admin sẽ bị đẩy về trang đăng nhập/tổng quan
+  const [admin, setAdmin] = useState(() => {
+    try {
+      const token = localStorage.getItem('lf_admin_token');
+      const user = localStorage.getItem('lf_admin_user');
+      return token && user ? { token, ...JSON.parse(user) } : null;
+    } catch { return null; }
+  });
 
   const login = (token, username) => {
     localStorage.setItem('lf_admin_token', token);

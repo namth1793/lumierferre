@@ -5,6 +5,7 @@ import App from './App.jsx';
 import { CartProvider } from './context/CartContext.jsx';
 import { LanguageProvider } from './context/LanguageContext.jsx';
 import { SiteSettingsProvider } from './context/SiteSettingsContext.jsx';
+import { CatalogProvider } from './context/CatalogContext.jsx';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -12,9 +13,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <LanguageProvider>
         <SiteSettingsProvider>
-          <CartProvider>
-            <App />
-          </CartProvider>
+          <CatalogProvider>
+            <CartProvider>
+              <App />
+            </CartProvider>
+          </CatalogProvider>
         </SiteSettingsProvider>
       </LanguageProvider>
     </BrowserRouter>

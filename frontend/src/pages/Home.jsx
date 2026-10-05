@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useCatalog } from '../context/CatalogContext';
 
 const DEFAULT_HERO_SLIDES = [
   {
@@ -22,7 +23,7 @@ export default function Home() {
   const { settings } = useSiteSettings();
   const home = settings.home;
   const [products, setProducts] = useState([]);
-  const [collections, setCollections] = useState([]);
+  const { collections } = useCatalog();
   const [currentSlide, setCurrentSlide] = useState(0);
   const timerRef = useRef(null);
 
@@ -31,8 +32,6 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/products?featured=true&limit=8')
       .then(r => r.json()).then(data => setProducts(data.products || [])).catch(() => {});
-    fetch('/api/collections')
-      .then(r => r.json()).then(data => setCollections(data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -153,9 +152,8 @@ export default function Home() {
           <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-3">{t('home.occasionFor')}</p>
           <h2 className="section-title">{t('home.occasionTitle')}</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { labelKey: 'home.bridal', img: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=500&fit=crop', href: '/san-pham?bridal=true' },
             { labelKey: 'home.evening', img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=500&fit=crop', href: '/san-pham?category=vay-dam' },
             { labelKey: 'home.aoDai', img: 'https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=400&h=500&fit=crop', href: '/san-pham?category=ao-dai' },
             { labelKey: 'home.elegant', img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=500&fit=crop', href: '/san-pham' },

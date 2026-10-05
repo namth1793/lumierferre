@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useCatalog } from '../context/CatalogContext';
 
 export default function Footer() {
   const { t } = useLanguage();
   const { settings } = useSiteSettings();
+  const { categories } = useCatalog();
   const g = settings.general;
   const FB_URL = g.facebook_url || 'https://www.facebook.com/';
   const [email, setEmail] = useState('');
@@ -90,12 +92,7 @@ export default function Footer() {
             <h4 className="text-[10px] tracking-[0.25em] uppercase font-inter text-white/60 mb-5">{t('footer.categories')}</h4>
             <ul className="space-y-3">
               {[
-                ['Váy đầm', '/san-pham?category=vay-dam'],
-                ['Áo dài', '/san-pham?category=ao-dai'],
-                ['Tops', '/san-pham?category=tops'],
-                ['Outerwear', '/san-pham?category=outerwear'],
-                ['Jumpsuits', '/san-pham?category=jumpsuits'],
-                ['Bridal', '/san-pham?bridal=true'],
+                ...categories.slice(0, 6).map(c => [c.name, `/san-pham?category=${c.slug}`]),
               ].map(([label, href]) => (
                 <li key={label}>
                   <Link to={href} className="text-xs text-white/70 font-inter hover:text-white transition-colors tracking-wide">{label}</Link>

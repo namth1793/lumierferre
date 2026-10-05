@@ -4,12 +4,14 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUser } from '../context/UserContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useCatalog } from '../context/CatalogContext';
 
 export default function Navbar() {
   const { count, setIsOpen } = useCart();
   const { lang, t, toggleLanguage } = useLanguage();
   const { user, openAuthDrawer, logout } = useUser();
   const { settings } = useSiteSettings();
+  const { categories, collections } = useCatalog();
   const siteName = settings.general.site_name;
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -21,37 +23,25 @@ export default function Navbar() {
   const location = useLocation();
   const userMenuRef = useRef(null);
 
+  const collectionLinks = collections.map(c => ({ key: `col-${c.id}`, label: c.name, href: `/bo-suu-tap/${c.slug}` }));
+
   const NAV_ITEMS = [
     {
       labelKey: 'nav.newArrivals',
       children: [
-        { labelKey: 'nav.ss26', href: '/bo-suu-tap/reverie-ss26' },
-        { labelKey: 'nav.fw25', href: '/bo-suu-tap/la-pureza-fw25' },
+        ...collections.map(c => ({ key: `new-${c.id}`, label: c.season || c.name, href: `/bo-suu-tap/${c.slug}` })),
         { labelKey: 'nav.viewAllNew', href: '/san-pham?is_new=true' },
       ],
     },
     { labelKey: 'nav.favorites', href: '/san-pham?featured=true' },
-    { labelKey: 'nav.bridal', href: '/san-pham?bridal=true' },
     { labelKey: 'nav.elegant', href: '/san-pham?category=ao-dai' },
     {
       labelKey: 'nav.categories',
-      children: [
-        { labelKey: 'nav.dresses', href: '/san-pham?category=vay-dam' },
-        { labelKey: 'nav.tops', href: '/san-pham?category=tops' },
-        { labelKey: 'nav.bottom', href: '/san-pham?category=bottom' },
-        { labelKey: 'nav.outerwear', href: '/san-pham?category=outerwear' },
-        { labelKey: 'nav.cape', href: '/san-pham?category=cape' },
-        { labelKey: 'nav.jumpsuits', href: '/san-pham?category=jumpsuits' },
-        { labelKey: 'nav.aoDai', href: '/san-pham?category=ao-dai' },
-        { labelKey: 'nav.accessories', href: '/san-pham?category=phu-kien' },
-      ],
+      children: categories.map(c => ({ key: `cat-${c.id}`, label: c.name, href: `/san-pham?category=${c.slug}` })),
     },
     {
       labelKey: 'nav.collections',
-      children: [
-        { labelKey: 'nav.reverie', href: '/bo-suu-tap/reverie-ss26' },
-        { labelKey: 'nav.pureza', href: '/bo-suu-tap/la-pureza-fw25' },
-      ],
+      children: collectionLinks,
     },
     { labelKey: 'nav.occasion', href: '/san-pham?featured=true' },
   ];
@@ -80,15 +70,15 @@ export default function Navbar() {
   };
 
   const renderDropdown = (item, align = 'left') => (
-    item.children && activeDropdown === item.labelKey && (
+    item.children?.length > 0 && activeDropdown === item.labelKey && (
       <div className={`dropdown-enter absolute top-full ${align === 'right' ? 'right-0' : 'left-0'} bg-white border border-gray-100 shadow-lg py-4 px-5 min-w-[200px] z-50`}>
         {item.children.map(child => (
           <Link
-            key={child.labelKey}
+            key={child.key || child.labelKey}
             to={child.href}
             className="block py-1.5 text-xs tracking-[0.1em] uppercase font-inter hover:opacity-50 transition-opacity whitespace-nowrap"
           >
-            {t(child.labelKey)}
+            {child.label ?? t(child.labelKey)}
           </Link>
         ))}
       </div>
@@ -110,7 +100,7 @@ export default function Navbar() {
         <nav className="max-w-[1440px] mx-auto px-4 sm:px-6 flex xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 2xl:gap-8 h-16">
           {/* Left nav */}
           <div className="hidden xl:flex items-center gap-4 2xl:gap-7 min-w-0">
-            {NAV_ITEMS.slice(0, 4).map((item) => (
+            {NAV_ITEMS.slice(0, 3).map((item) => (
               <div key={item.labelKey} className="relative" onMouseEnter={() => setActiveDropdown(item.labelKey)}>
                 {item.href ? (
                   <Link to={item.href} className="nav-link">{t(item.labelKey)}</Link>
@@ -130,7 +120,7 @@ export default function Navbar() {
 
           {/* Right nav */}
           <div className="hidden xl:flex items-center gap-4 2xl:gap-7 justify-end min-w-0">
-            {NAV_ITEMS.slice(4).map((item) => (
+            {NAV_ITEMS.slice(3).map((item) => (
               <div key={item.labelKey} className="relative" onMouseEnter={() => setActiveDropdown(item.labelKey)}>
                 {item.href ? (
                   <Link to={item.href} className="nav-link">{t(item.labelKey)}</Link>
@@ -275,9 +265,9 @@ export default function Navbar() {
                     <p className="py-3 text-sm tracking-[0.15em] uppercase font-inter text-warm-gray border-b border-gray-100">{t(item.labelKey)}</p>
                     <div className="pl-4">
                       {item.children?.map(child => (
-                        <Link key={child.labelKey} to={child.href}
+                        <Link key={child.key || child.labelKey} to={child.href}
                           className="block py-2.5 text-xs tracking-[0.12em] uppercase font-inter border-b border-gray-50 hover:opacity-50">
-                          {t(child.labelKey)}
+                          {child.label ?? t(child.labelKey)}
                         </Link>
                       ))}
                     </div>

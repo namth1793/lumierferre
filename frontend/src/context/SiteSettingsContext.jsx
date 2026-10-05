@@ -26,7 +26,13 @@ export function SiteSettingsProvider({ children }) {
       .finally(() => setLoaded(true));
   }, []);
 
-  useEffect(() => { refetch(); }, [refetch]);
+  useEffect(() => {
+    refetch();
+    // Admin sửa ở tab khác → quay lại tab web là thấy ngay
+    const onVisible = () => { if (document.visibilityState === 'visible') refetch(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refetch]);
 
   return (
     <SiteSettingsContext.Provider value={{ settings, loaded, refetch }}>

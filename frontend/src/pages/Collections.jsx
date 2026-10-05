@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
+import { useCatalog } from '../context/CatalogContext';
 
 export default function Collections() {
   const { slug } = useParams();
   const { t } = useLanguage();
+  const { collections } = useCatalog();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const COLLECTION_INFO = {
+  const COLLECTION_EXTRAS = {
     'reverie-ss26': {
       seasonKey: 'col.ss26Season', title: 'Rêverie', subtitleKey: 'col.ss26Subtitle',
       descKey: 'col.ss26Desc',
@@ -26,12 +28,23 @@ export default function Collections() {
     },
   };
 
-  const info = COLLECTION_INFO[slug] || {
-    seasonKey: 'col.collectionLabel', title: 'Collection', subtitleKey: 'col.ss26Subtitle',
-    descKey: 'col.ss26Desc',
-    hero: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1920&h=900&fit=crop',
-    palette: [], paletteLabels: [],
+  const FALLBACK_HERO = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1920&h=900&fit=crop';
+  // Tên, mùa, mô tả, ảnh bìa lấy từ admin (Bộ Sưu Tập); bảng màu/tiêu đề phụ giữ theo slug nếu có
+  const toInfo = (col) => {
+    const extra = COLLECTION_EXTRAS[col.slug] || {};
+    return {
+      slug: col.slug,
+      season: col.season || (extra.seasonKey ? t(extra.seasonKey) : t('col.collectionLabel')),
+      title: col.name,
+      subtitle: extra.subtitleKey ? t(extra.subtitleKey) : '',
+      desc: col.description || (extra.descKey ? t(extra.descKey) : ''),
+      hero: col.cover_image || extra.hero || FALLBACK_HERO,
+      palette: extra.palette || [], paletteLabels: extra.paletteLabels || [],
+    };
   };
+  const current = collections.find(c => c.slug === slug);
+  const info = current ? toInfo(current) : { season: t('col.collectionLabel'), title: '', subtitle: '', desc: '', hero: FALLBACK_HERO, palette: [], paletteLabels: [] };
+  const others = collections.filter(c => c.slug !== slug).map(toInfo);
 
   useEffect(() => {
     setLoading(true);
@@ -47,15 +60,15 @@ export default function Collections() {
         <img src={info.hero} alt={info.title} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/35" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6">
-          <p className="text-[10px] tracking-[0.4em] uppercase font-inter mb-5 opacity-80">{t(info.seasonKey)}</p>
+          <p className="text-[10px] tracking-[0.4em] uppercase font-inter mb-5 opacity-80">{info.season}</p>
           <h1 className="font-cormorant text-7xl md:text-9xl font-light leading-[1.15] tracking-[0.06em] hero-text-shadow">{info.title}</h1>
-          <p className="font-cormorant text-xl italic font-light opacity-85 mt-4 max-w-lg">{t(info.subtitleKey)}</p>
+          <p className="font-cormorant text-xl italic font-light opacity-85 mt-4 max-w-lg">{info.subtitle}</p>
         </div>
       </section>
 
       {/* Story */}
       <section className="max-w-[800px] mx-auto px-6 py-20 text-center">
-        <p className="font-cormorant text-xl font-light leading-loose text-gray-700 italic">{t(info.descKey)}</p>
+        <p className="font-cormorant text-xl font-light leading-loose text-gray-700 italic">{info.desc}</p>
       </section>
 
       {/* Color palette */}
@@ -79,7 +92,7 @@ export default function Collections() {
       {/* Products */}
       <section className="px-6 pb-24 max-w-[1440px] mx-auto">
         <div className="text-center mb-12">
-          <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-3">{t(info.seasonKey)}</p>
+          <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-3">{info.season}</p>
           <h2 className="section-title">{t('col.collectionDesigns')}</h2>
         </div>
 
@@ -113,16 +126,14 @@ export default function Collections() {
           <p className="text-[10px] tracking-[0.3em] uppercase font-inter text-warm-gray mb-3">{t('col.otherLabel')}</p>
           <h2 className="section-title mb-12">{t('col.otherTitle')}</h2>
           <div className="grid md:grid-cols-2 gap-6">
-            {Object.entries(COLLECTION_INFO)
-              .filter(([s]) => s !== slug)
-              .map(([s, col]) => (
-                <Link key={s} to={`/bo-suu-tap/${s}`} className="group relative overflow-hidden block">
+            {others.map(col => (
+                <Link key={col.slug} to={`/bo-suu-tap/${col.slug}`} className="group relative overflow-hidden block">
                   <div className="aspect-[16/9] overflow-hidden">
                     <img src={col.hero} alt={col.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   </div>
                   <div className="absolute inset-0 bg-black/25 group-hover:bg-black/40 transition-colors duration-300" />
                   <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-                    <p className="text-[10px] tracking-[0.3em] uppercase font-inter opacity-70 mb-2">{t(col.seasonKey)}</p>
+                    <p className="text-[10px] tracking-[0.3em] uppercase font-inter opacity-70 mb-2">{col.season}</p>
                     <h3 className="font-cormorant text-4xl font-light leading-tight">{col.title}</h3>
                   </div>
                 </Link>

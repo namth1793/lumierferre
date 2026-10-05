@@ -28,6 +28,9 @@ if (process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_VOLUME_MOUNT_PATH) {
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Dữ liệu admin vừa sửa phải hiện ngay → không cho trình duyệt/proxy giữ bản cũ của API
+app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
 // Nội dung admin chỉ lưu dạng text thuần: bỏ mọi thẻ HTML trước khi ghi vào DB
 function toPlainText(value) {
   if (Array.isArray(value)) return value.map(toPlainText);

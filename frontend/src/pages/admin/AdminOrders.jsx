@@ -27,6 +27,7 @@ export default function AdminOrders() {
   const [selected, setSelected] = useState(null);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedNotice, setSavedNotice] = useState(false);
   const LIMIT = 20;
 
   const [newOrder, setNewOrder] = useState({
@@ -86,6 +87,7 @@ export default function AdminOrders() {
       if (!res.ok) { alert((await res.json().catch(() => ({}))).error || 'Lỗi khi cập nhật đơn hàng'); return; }
       fetchOrders();
       if (selected?.id === id) setSelected(o => ({ ...o, ...updates }));
+      setSavedNotice(true); setTimeout(() => setSavedNotice(false), 2500);
     } catch { alert('Lỗi khi cập nhật đơn hàng'); }
     finally { setSaving(false); }
   };
@@ -234,14 +236,14 @@ export default function AdminOrders() {
             <div className="space-y-3 border-t border-gray-100 pt-4">
               <div>
                 <label className={labelCls}>Trạng thái đơn</label>
-                <select value={selected.status} onChange={e => { setSelected(o => ({ ...o, status: e.target.value })); updateOrder(selected.id, { status: e.target.value }); }}
+                <select value={selected.status} onChange={e => setSelected(o => ({ ...o, status: e.target.value }))}
                   className={inputCls + ' bg-white cursor-pointer'}>
                   {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Thanh toán</label>
-                <select value={selected.payment_status} onChange={e => { setSelected(o => ({ ...o, payment_status: e.target.value })); updateOrder(selected.id, { payment_status: e.target.value }); }}
+                <select value={selected.payment_status} onChange={e => setSelected(o => ({ ...o, payment_status: e.target.value }))}
                   className={inputCls + ' bg-white cursor-pointer'}>
                   {Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
@@ -250,11 +252,16 @@ export default function AdminOrders() {
                 <div>
                   <label className={labelCls}>Ghi chú</label>
                   <textarea rows={3} value={selected.notes || ''} onChange={e => setSelected(o => ({ ...o, notes: e.target.value }))}
-                    onBlur={() => updateOrder(selected.id, { notes: selected.notes })}
                     className={inputCls + ' resize-none'} placeholder="Ghi chú..." />
                 </div>
               )}
             </div>
+
+            <button onClick={() => updateOrder(selected.id, { status: selected.status, payment_status: selected.payment_status, notes: selected.notes || '' })}
+              disabled={saving} className="btn-dark w-full mt-4 disabled:opacity-50">
+              {saving ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
+            </button>
+            {savedNotice && <p className="text-xs text-green-600 font-inter mt-2 text-center">Đã lưu thành công.</p>}
 
             <button onClick={() => deleteOrder(selected.id)} className="mt-4 w-full border border-red-200 text-red-500 text-xs tracking-[0.1em] uppercase font-inter py-2 hover:bg-red-50 transition-colors">
               Xóa đơn hàng

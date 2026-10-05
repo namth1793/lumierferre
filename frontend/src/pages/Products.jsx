@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
+import { useCatalog } from '../context/CatalogContext';
 
 export default function Products() {
   const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const { categories, collections } = useCatalog();
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,7 +38,6 @@ export default function Products() {
       .catch(() => {}).finally(() => setLoading(false));
   }, [category, collection, featured, is_new, bridal, search, sort, page]);
 
-  useEffect(() => { fetch('/api/categories').then(r => r.json()).then(setCategories).catch(() => {}); }, []);
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const setParam = (key, val) => {
@@ -106,7 +106,6 @@ export default function Products() {
                   {[
                     { labelKey: 'products.new', key: 'is_new', val: 'true' },
                     { labelKey: 'products.featured', key: 'featured', val: 'true' },
-                    { labelKey: 'nav.bridal', key: 'bridal', val: 'true' },
                   ].map(f => (
                     <li key={f.key}>
                       <button onClick={() => setParam(f.key, searchParams.get(f.key) ? '' : f.val)}
@@ -123,14 +122,11 @@ export default function Products() {
               <div>
                 <h3 className="text-[10px] tracking-[0.25em] uppercase font-inter text-warm-gray mb-4">{t('products.collections')}</h3>
                 <ul className="space-y-2">
-                  {[
-                    { label: 'Rêverie SS26', slug: 'reverie-ss26' },
-                    { label: 'La Pureza FW26', slug: 'la-pureza-fw25' },
-                  ].map(c => (
+                  {collections.map(c => (
                     <li key={c.slug}>
                       <button onClick={() => setParam('collection', collection === c.slug ? '' : c.slug)}
                         className={`text-sm font-inter transition-opacity ${collection === c.slug ? 'font-medium' : 'text-warm-gray hover:text-black'}`}>
-                        {c.label}
+                        {c.name}
                       </button>
                     </li>
                   ))}
