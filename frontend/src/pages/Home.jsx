@@ -12,7 +12,7 @@ const DEFAULT_HERO_SLIDES = [
   },
   {
     image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1920&h=1080&fit=crop&q=90',
-    label: 'BỘ SƯU TẬP THU ĐÔNG 2025', title: 'La Pureza', subtitle: 'Sự tinh khiết thuần túy trong từng thớ vải cao cấp',
+    label: 'BỘ SƯU TẬP THU ĐÔNG 2026', title: 'La Pureza', subtitle: 'Sự tinh khiết thuần túy trong từng thớ vải cao cấp',
     cta_text: 'Mua Sắm Ngay', cta_href: '/bo-suu-tap/la-pureza-fw25',
   },
 ];

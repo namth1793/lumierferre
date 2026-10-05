@@ -107,9 +107,9 @@ export default function Navbar() {
         className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? 'shadow-sm' : ''}`}
         onMouseLeave={() => setActiveDropdown(null)}
       >
-        <nav className="max-w-[1440px] mx-auto px-6 flex items-center h-16">
+        <nav className="max-w-[1440px] mx-auto px-4 sm:px-6 flex xl:grid xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 2xl:gap-8 h-16">
           {/* Left nav */}
-          <div className="hidden lg:flex items-center gap-6 flex-1">
+          <div className="hidden xl:flex items-center gap-4 2xl:gap-7 min-w-0">
             {NAV_ITEMS.slice(0, 4).map((item) => (
               <div key={item.labelKey} className="relative" onMouseEnter={() => setActiveDropdown(item.labelKey)}>
                 {item.href ? (
@@ -123,13 +123,13 @@ export default function Navbar() {
           </div>
 
           {/* Logo */}
-          <Link to="/" className="font-cormorant text-xl md:text-2xl font-light tracking-[0.25em] uppercase text-black flex-shrink-0 mx-auto lg:mx-0 lg:absolute lg:left-1/2 lg:-translate-x-1/2 flex items-center gap-2">
+          <Link to="/" className="font-cormorant text-lg sm:text-xl md:text-2xl xl:text-xl 2xl:text-2xl font-light tracking-[0.15em] sm:tracking-[0.25em] xl:tracking-[0.2em] 2xl:tracking-[0.25em] uppercase text-black whitespace-nowrap min-w-0 mx-auto xl:mx-0 flex items-center gap-2">
             {settings.general.logo_url && <img src={settings.general.logo_url} alt={siteName} className="h-7 w-auto object-contain" />}
             {siteName}
           </Link>
 
           {/* Right nav */}
-          <div className="hidden lg:flex items-center gap-6 flex-1 justify-end">
+          <div className="hidden xl:flex items-center gap-4 2xl:gap-7 justify-end min-w-0">
             {NAV_ITEMS.slice(4).map((item) => (
               <div key={item.labelKey} className="relative" onMouseEnter={() => setActiveDropdown(item.labelKey)}>
                 {item.href ? (
@@ -141,7 +141,7 @@ export default function Navbar() {
               </div>
             ))}
 
-            <div className="flex items-center gap-3 ml-4">
+            <div className="flex items-center gap-3 ml-1 flex-shrink-0">
               {/* Language Toggle */}
               <button
                 onClick={toggleLanguage}
@@ -194,7 +194,7 @@ export default function Navbar() {
           </div>
 
           {/* Mobile right */}
-          <div className="flex lg:hidden items-center gap-3 ml-auto">
+          <div className="flex xl:hidden items-center gap-2.5 sm:gap-3 ml-auto flex-shrink-0">
             <button onClick={toggleLanguage} className="text-[10px] tracking-[0.15em] font-inter border border-black px-1.5 py-0.5">
               {lang === 'en' ? 'VI' : 'EN'}
             </button>

@@ -22,7 +22,7 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(() => new URLSearchParams(window.location.search).get('status') || '');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -124,6 +124,8 @@ export default function AdminOrders() {
         if (data.kiotviet && !['synced', 'not_configured'].includes(data.kiotviet.status)) {
           alert(`Đơn hàng đã tạo, nhưng đồng bộ KiotViet: ${data.kiotviet.error || data.kiotviet.status}`);
         }
+      } else {
+        alert((await res.json().catch(() => ({}))).error || 'Lỗi khi tạo đơn hàng');
       }
     } catch { alert('Lỗi khi tạo đơn hàng'); }
     finally { setSaving(false); }

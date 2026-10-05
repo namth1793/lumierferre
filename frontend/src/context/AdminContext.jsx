@@ -23,8 +23,8 @@ export function AdminProvider({ children }) {
     setAdmin(null);
   };
 
-  const authFetch = (url, opts = {}) => {
-    return fetch(url, {
+  const authFetch = async (url, opts = {}) => {
+    const res = await fetch(url, {
       ...opts,
       headers: {
         'Content-Type': 'application/json',
@@ -32,6 +32,9 @@ export function AdminProvider({ children }) {
         ...opts.headers,
       },
     });
+    // Phiên đăng nhập hết hạn (24h) → đăng xuất để AdminLayout chuyển về trang đăng nhập
+    if (res.status === 401) logout();
+    return res;
   };
 
   return (

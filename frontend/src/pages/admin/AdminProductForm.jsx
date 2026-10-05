@@ -28,26 +28,19 @@ export default function AdminProductForm() {
     fetch('/api/collections').then(r => r.json()).then(setCollections).catch(() => {});
     if (isEdit) {
       setLoading(true);
-      authFetch(`/api/admin/products?search=`).then(r => r.json()).then(data => {
-        // Actually fetch product by slug via public API or find in admin list
-        setLoading(false);
-      }).catch(() => setLoading(false));
-      // Fetch via public products list
-      fetch(`/api/products?limit=500`).then(r => r.json()).then(data => {
-        const p = data.products?.find(x => x.id === parseInt(id));
-        if (p) {
-          setForm({
-            name: p.name || '', price: p.price || '', original_price: p.original_price || '',
-            category_id: p.category_id || '', collection_id: p.collection_id || '',
-            description: p.description || '', fabric: p.fabric || '', care: p.care || '',
-            sizes: (p.sizes || []).join(','), colors: (p.colors || []).join(','),
-            images: p.images || [],
-            is_featured: !!p.is_featured, is_new: !!p.is_new,
-            is_bridal: !!p.is_bridal, is_soldout: !!p.is_soldout,
-          });
-        }
-        setLoading(false);
-      }).catch(() => setLoading(false));
+      authFetch(`/api/admin/products/${id}`).then(async r => {
+        const p = await r.json();
+        if (!r.ok) { setError(p.error || 'Không tải được sản phẩm'); return; }
+        setForm({
+          name: p.name || '', price: p.price || '', original_price: p.original_price || '',
+          category_id: p.category_id || '', collection_id: p.collection_id || '',
+          description: p.description || '', fabric: p.fabric || '', care: p.care || '',
+          sizes: (p.sizes || []).join(','), colors: (p.colors || []).join(','),
+          images: p.images || [],
+          is_featured: !!p.is_featured, is_new: !!p.is_new,
+          is_bridal: !!p.is_bridal, is_soldout: !!p.is_soldout,
+        });
+      }).catch(() => setError('Không thể kết nối máy chủ')).finally(() => setLoading(false));
     }
   }, [id, isEdit]);
 

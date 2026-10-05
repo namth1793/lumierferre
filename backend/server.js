@@ -9,7 +9,7 @@ const multer = require('multer');
 const kiotviet = require('./kiotviet');
 const cloudinaryStore = require('./cloudinary');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 const app = express();
 const PORT = process.env.PORT || 5033;
@@ -164,8 +164,8 @@ if (catCount === 0) {
   insertCol.run('Rêverie SS26', 'reverie-ss26', 'Spring Summer 2026',
     'Bộ sưu tập Xuân Hè 2026 — Những giấc mơ lãng mạn qua từng đường nét tinh tế.',
     'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1400&h=900&fit=crop');
-  insertCol.run('La Pureza FW25', 'la-pureza-fw25', 'Fall Winter 2025',
-    'Bộ sưu tập Thu Đông 2025 — Sự tinh khiết thuần túy trong từng thớ vải cao cấp.',
+  insertCol.run('La Pureza FW26', 'la-pureza-fw25', 'Fall Winter 2026',
+    'Bộ sưu tập Thu Đông 2026 — Sự tinh khiết thuần túy trong từng thớ vải cao cấp.',
     'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=1400&h=900&fit=crop');
 
   const insertProd = db.prepare(`
@@ -381,7 +381,7 @@ const DEFAULT_SETTINGS = {
   home: {
     hero_slides: [
       { image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1920&h=1080&fit=crop&q=90', label: 'BỘ SƯU TẬP XUÂN HÈ 2026', title: 'Rêverie', subtitle: 'Những giấc mơ lãng mạn qua từng đường nét tinh tế', cta_text: 'Khám Phá Rêverie', cta_href: '/bo-suu-tap/reverie-ss26' },
-      { image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1920&h=1080&fit=crop&q=90', label: 'BỘ SƯU TẬP THU ĐÔNG 2025', title: 'La Pureza', subtitle: 'Sự tinh khiết thuần túy trong từng thớ vải cao cấp', cta_text: 'Mua Sắm Ngay', cta_href: '/bo-suu-tap/la-pureza-fw25' },
+      { image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=1920&h=1080&fit=crop&q=90', label: 'BỘ SƯU TẬP THU ĐÔNG 2026', title: 'La Pureza', subtitle: 'Sự tinh khiết thuần túy trong từng thớ vải cao cấp', cta_text: 'Mua Sắm Ngay', cta_href: '/bo-suu-tap/la-pureza-fw25' },
     ],
     about_image: 'https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=700&h=900&fit=crop&q=85',
     about_label: 'TRIẾT LÝ THƯƠNG HIỆU',
@@ -397,7 +397,7 @@ const DEFAULT_SETTINGS = {
     story_label: 'CÂU CHUYỆN THƯƠNG HIỆU',
     heading_line1: 'Nơi truyền thống',
     heading_line2: 'gặp gỡ hiện đại',
-    story1: 'LUMIE FERRE được thành lập vào năm 2018 bởi Isabelle Ferré, với khát vọng tạo nên những thiết kế thời trang cao cấp giao thoa giữa vẻ đẹp phương Đông và phương Tây.',
+    story1: 'LUMIE FERRE được thành lập vào năm 2026 bởi Isabelle Ferré, với khát vọng tạo nên những thiết kế thời trang cao cấp giao thoa giữa vẻ đẹp phương Đông và phương Tây.',
     story2: 'Từ một xưởng may nhỏ tại Hà Nội, chúng tôi đã phát triển thành một thương hiệu thời trang được yêu thích, với những sản phẩm được chế tác thủ công tỉ mỉ bởi đội ngũ nghệ nhân lành nghề.',
     story3: 'Ngày nay, LUMIE FERRE tự hào mang đến những thiết kế vượt thời gian, kết hợp chất liệu cao cấp với kỹ thuật thủ công tinh xảo.',
     atelier_image1: 'https://images.unsplash.com/photo-1551163943-3f6a855d1153?w=400&h=500&fit=crop&q=85',
@@ -412,7 +412,7 @@ const DEFAULT_SETTINGS = {
       { name: 'Trần Minh Laurent', role: 'Giám Đốc Nghệ Thuật', image: 'https://images.unsplash.com/photo-1566479179817-c0a8b8dfafb8?w=500&h=600&fit=crop' },
     ],
     stats: [
-      { num: '2018', label: 'Năm Thành Lập' },
+      { num: '2026', label: 'Năm Thành Lập' },
       { num: '50+', label: 'Nghệ Nhân' },
       { num: '500+', label: 'Thiết Kế' },
       { num: '2', label: 'Showroom' },
@@ -440,6 +440,17 @@ db.prepare(`
   SET value = REPLACE(REPLACE(REPLACE(value, 'LUMIÈRE FERRÉ', 'LUMIE FERRE'), 'Lumière Ferré', 'LUMIE FERRE'), 'LUMIERE FERRE', 'LUMIE FERRE')
   WHERE value LIKE '%LUMIÈRE FERRÉ%' OR value LIKE '%Lumière Ferré%' OR value LIKE '%LUMIERE FERRE%'
 `).run();
+
+// Đổi các mốc năm cũ trong DB đã có sẵn (Railway) thành 2026 — slug bộ sưu tập giữ nguyên để không gãy link
+for (const [from, to] of [
+  ['FALL WINTER 2025', 'FALL WINTER 2026'], ['Fall Winter 2025', 'Fall Winter 2026'], ['FW25', 'FW26'],
+  ['Thu Đông 2025', 'Thu Đông 2026'], ['THU ĐÔNG 2025', 'THU ĐÔNG 2026'],
+  ['năm 2018', 'năm 2026'], ['"num":"2018"', '"num":"2026"'],
+]) {
+  db.prepare('UPDATE site_settings SET value = REPLACE(value, ?, ?) WHERE instr(value, ?) > 0').run(from, to, from);
+  db.prepare(`UPDATE collections SET name = REPLACE(name, ?, ?), season = REPLACE(season, ?, ?), description = REPLACE(description, ?, ?)
+    WHERE instr(name, ?) > 0 OR instr(season, ?) > 0 OR instr(description, ?) > 0`).run(from, to, from, to, from, to, from, from, from);
+}
 
 // Patch broken image URLs (runs every startup to fix existing DB)
 db.prepare(`
@@ -613,9 +624,11 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
   const { name, slug, price, original_price, category_id, collection_id, description, fabric, care,
     sizes, colors, images, is_featured, is_new, is_bridal, is_soldout } = req.body;
   if (!name || !price) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
-  const auto_slug = (slug || name).toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g,'')
-    .replace(/đ/g,'d').replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').trim();
+  // Tên trùng (vd: cùng mẫu khác màu) → thêm hậu tố -1, -2... để slug không bị trùng
+  const base_slug = slugify(slug || name) || 'san-pham';
+  const slugTaken = db.prepare('SELECT 1 FROM products WHERE slug = ?');
+  let auto_slug = base_slug, n = 1;
+  while (slugTaken.get(auto_slug)) auto_slug = `${base_slug}-${n++}`;
   try {
     const result = db.prepare(`INSERT INTO products (name,slug,price,original_price,category_id,collection_id,
       description,fabric,care,sizes,colors,images,is_featured,is_new,is_bridal,is_soldout)
@@ -628,6 +641,12 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
       is_featured?1:0, is_new?1:0, is_bridal?1:0, is_soldout?1:0);
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get('/api/admin/products/:id', requireAdmin, (req, res) => {
+  const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Không tìm thấy sản phẩm.' });
+  res.json({ ...p, images: JSON.parse(p.images||'[]'), sizes: JSON.parse(p.sizes||'[]'), colors: JSON.parse(p.colors||'[]') });
 });
 
 app.put('/api/admin/products/:id', requireAdmin, (req, res) => {
@@ -739,11 +758,18 @@ app.post('/api/admin/orders', requireAdmin, async (req, res) => {
 });
 
 app.put('/api/admin/orders/:id', requireAdmin, (req, res) => {
-  const { status, payment_status, notes, customer_name, customer_email, customer_phone, customer_address, shipping } = req.body;
+  const current = db.prepare('SELECT * FROM orders WHERE id=?').get(req.params.id);
+  if (!current) return res.status(404).json({ error: 'Không tìm thấy đơn hàng.' });
+  // Chỉ ghi đè trường được gửi lên, tránh xóa/ghi lùi dữ liệu khi frontend gửi thiếu hoặc dữ liệu cũ
+  const o = { ...current };
+  for (const k of ['status', 'payment_status', 'notes', 'customer_name', 'customer_email', 'customer_phone', 'customer_address', 'shipping']) {
+    if (req.body[k] !== undefined && req.body[k] !== null) o[k] = req.body[k];
+  }
+  if (!o.customer_name) return res.status(400).json({ error: 'Thiếu tên khách hàng.' });
   db.prepare(`UPDATE orders SET status=?,payment_status=?,notes=?,customer_name=?,
     customer_email=?,customer_phone=?,customer_address=?,shipping=? WHERE id=?`).run(
-    status, payment_status, notes||'', customer_name, customer_email||'',
-    customer_phone||'', customer_address||'', shipping||0, req.params.id);
+    o.status, o.payment_status, o.notes||'', o.customer_name, o.customer_email||'',
+    o.customer_phone||'', o.customer_address||'', o.shipping||0, req.params.id);
   res.json({ success: true });
 });
 
@@ -783,6 +809,7 @@ app.get('/api/admin/settings/:key', requireAdmin, (req, res) => {
 
 app.put('/api/admin/settings/:key', requireAdmin, (req, res) => {
   const { key } = req.params;
+  if (!DEFAULT_SETTINGS[key]) return res.status(404).json({ error: 'Không tìm thấy mục cài đặt.' });
   db.prepare(`
     INSERT INTO site_settings (key, value) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
@@ -805,6 +832,7 @@ app.post('/api/admin/categories', requireAdmin, (req, res) => {
 
 app.put('/api/admin/categories/:id', requireAdmin, (req, res) => {
   const { name, description, image, sort_order } = req.body;
+  if (!name) return res.status(400).json({ error: 'Thiếu tên danh mục.' });
   db.prepare('UPDATE categories SET name=?, description=?, image=?, sort_order=? WHERE id=?')
     .run(name, description || '', image || '', sort_order || 0, req.params.id);
   res.json({ success: true });
@@ -836,6 +864,7 @@ app.post('/api/admin/collections', requireAdmin, (req, res) => {
 
 app.put('/api/admin/collections/:id', requireAdmin, (req, res) => {
   const { name, season, description, cover_image } = req.body;
+  if (!name) return res.status(400).json({ error: 'Thiếu tên bộ sưu tập.' });
   db.prepare('UPDATE collections SET name=?, season=?, description=?, cover_image=? WHERE id=?')
     .run(name, season || '', description || '', cover_image || '', req.params.id);
   res.json({ success: true });
@@ -1017,7 +1046,7 @@ app.use('/api', (_req, res) => res.status(404).json({ error: 'Không tìm thấy
 
 app.use((err, _req, res, _next) => {
   console.error(err);
-  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File quá lớn (tối đa 8MB).' });
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File quá lớn (tối đa 20MB).' });
   if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Dữ liệu gửi lên quá lớn.' });
   if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Dữ liệu gửi lên không hợp lệ.' });
   if (String(err.message).includes('NOT NULL')) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });

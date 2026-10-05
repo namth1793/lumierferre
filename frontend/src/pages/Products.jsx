@@ -125,7 +125,7 @@ export default function Products() {
                 <ul className="space-y-2">
                   {[
                     { label: 'Rêverie SS26', slug: 'reverie-ss26' },
-                    { label: 'La Pureza FW25', slug: 'la-pureza-fw25' },
+                    { label: 'La Pureza FW26', slug: 'la-pureza-fw25' },
                   ].map(c => (
                     <li key={c.slug}>
                       <button onClick={() => setParam('collection', collection === c.slug ? '' : c.slug)}
