@@ -20,9 +20,41 @@ const dataDir = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH ||
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 const db = new Database(path.join(dataDir, 'lumierferre.db'));
+console.log(`✦ Database: ${path.join(dataDir, 'lumierferre.db')}`);
+if (process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+  console.warn('⚠ Railway chưa gắn Volume → mọi dữ liệu admin sẽ MẤT sau mỗi lần deploy lại!');
+}
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Nội dung admin chỉ lưu dạng text thuần: bỏ mọi thẻ HTML trước khi ghi vào DB
+function toPlainText(value) {
+  if (Array.isArray(value)) return value.map(toPlainText);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, toPlainText(v)]));
+  }
+  if (typeof value !== 'string') return value;
+  // Dán nguyên mã nhúng Google Maps → chỉ giữ lại link
+  const iframeSrc = value.match(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/i);
+  if (iframeSrc) return iframeSrc[1];
+  return value
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, '\n')
+    .replace(/<\/?[a-z][^>]*>/gi, '')
+    .replace(/&nbsp;/gi, ' ').replace(/&quot;/gi, '"').replace(/&#39;/g, "'").replace(/&amp;/gi, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+app.use('/api/admin', (req, _res, next) => {
+  if (['POST', 'PUT'].includes(req.method) && req.path !== '/login' && req.body && typeof req.body === 'object') {
+    req.body = toPlainText(req.body);
+  }
+  next();
+});
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS categories (
