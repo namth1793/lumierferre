@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { useCatalog } from '../../context/CatalogContext';
 import { ImageUploaderSingle } from '../../components/admin/ImageUploader';
+import { EditLangBar, ViHint, useEditLang } from '../../components/admin/Bilingual';
 
-const EMPTY = { id: null, name: '', season: '', description: '', cover_image: '' };
+const EMPTY = { id: null, name: '', season: '', description: '', cover_image: '', name_en: '', season_en: '', description_en: '' };
 
 export default function AdminCollections() {
   const { authFetch } = useAdmin();
@@ -14,6 +15,7 @@ export default function AdminCollections() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { isEn, k } = useEditLang();
 
   const fetchCollections = useCallback(() => {
     setLoading(true);
@@ -24,7 +26,7 @@ export default function AdminCollections() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!editing.name) { setError('Vui lòng nhập tên bộ sưu tập.'); return; }
+    if (!editing.name) { setError('Vui lòng nhập tên bộ sưu tập (bản tiếng Việt).'); return; }
     setSaving(true); setError('');
     try {
       const url = editing.id ? `/api/admin/collections/${editing.id}` : '/api/admin/collections';
@@ -66,22 +68,27 @@ export default function AdminCollections() {
         <button onClick={() => setEditing({ ...EMPTY })} className="btn-dark">+ Thêm Bộ Sưu Tập</button>
       </div>
 
+      <EditLangBar />
+
       {notice && <p className="mb-6 text-sm font-inter text-green-600">{notice}</p>}
 
       {editing && (
         <form onSubmit={handleSave} className="bg-white border border-gray-100 p-6 mb-8 space-y-5 max-w-xl">
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">{editing.id ? 'Chỉnh Sửa Bộ Sưu Tập' : 'Thêm Bộ Sưu Tập'}</h2>
           <div>
-            <label className={labelCls}>Tên bộ sưu tập <span className="text-red-500">*</span></label>
-            <input type="text" value={editing.name} onChange={e => setEditing(c => ({ ...c, name: e.target.value }))} className={inputCls} />
+            <label className={labelCls}>Tên bộ sưu tập {!isEn && <span className="text-red-500">*</span>}</label>
+            <input type="text" value={editing[k('name')] || ''} onChange={e => setEditing(c => ({ ...c, [k('name')]: e.target.value }))} className={inputCls} />
+            <ViHint text={editing.name} />
           </div>
           <div>
             <label className={labelCls}>Mùa (VD: Spring Summer 2026)</label>
-            <input type="text" value={editing.season} onChange={e => setEditing(c => ({ ...c, season: e.target.value }))} className={inputCls} />
+            <input type="text" value={editing[k('season')] || ''} onChange={e => setEditing(c => ({ ...c, [k('season')]: e.target.value }))} className={inputCls} />
+            <ViHint text={editing.season} />
           </div>
           <div>
             <label className={labelCls}>Mô tả</label>
-            <textarea rows={3} value={editing.description} onChange={e => setEditing(c => ({ ...c, description: e.target.value }))} className={inputCls + ' resize-none'} />
+            <textarea rows={3} value={editing[k('description')] || ''} onChange={e => setEditing(c => ({ ...c, [k('description')]: e.target.value }))} className={inputCls + ' resize-none'} />
+            <ViHint text={editing.description} />
           </div>
           <ImageUploaderSingle label="Ảnh bìa" value={editing.cover_image} onChange={(cover_image) => setEditing(c => ({ ...c, cover_image }))} />
           {error && <p className="text-red-500 text-sm font-inter">{error}</p>}
@@ -99,9 +106,12 @@ export default function AdminCollections() {
               {c.cover_image && <img src={c.cover_image} alt={c.name} className="w-full h-full object-cover" />}
             </div>
             <div className="p-5">
-              <p className="text-[10px] tracking-[0.15em] uppercase text-warm-gray font-inter mb-1">{c.season}</p>
-              <h3 className="font-cormorant text-xl font-light mb-2">{c.name}</h3>
-              <p className="text-xs text-warm-gray font-inter mb-4 line-clamp-2">{c.description}</p>
+              <p className="text-[10px] tracking-[0.15em] uppercase text-warm-gray font-inter mb-1">{(isEn && c.season_en) || c.season}</p>
+              <h3 className="font-cormorant text-xl font-light mb-2">
+                {(isEn && c.name_en) || c.name}
+                {isEn && !c.name_en && <span className="ml-2 font-inter text-[9px] tracking-[0.1em] uppercase text-amber-600">chưa có EN</span>}
+              </h3>
+              <p className="text-xs text-warm-gray font-inter mb-4 line-clamp-2">{(isEn && c.description_en) || c.description}</p>
               <div className="flex gap-3">
                 <button onClick={() => setEditing(c)} className="text-xs font-inter text-black hover:opacity-50 underline underline-offset-2">Sửa</button>
                 <button onClick={() => handleDelete(c.id, c.name)} className="text-xs font-inter text-red-500 hover:opacity-50 underline underline-offset-2">Xóa</button>

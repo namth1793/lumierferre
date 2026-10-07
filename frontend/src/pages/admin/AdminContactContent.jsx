@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
+import { EditLangBar, ViHint, useEditLang } from '../../components/admin/Bilingual';
 
 export default function AdminContactContent() {
   const { authFetch } = useAdmin();
@@ -9,6 +10,7 @@ export default function AdminContactContent() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const { k } = useEditLang();
 
   useEffect(() => {
     authFetch('/api/admin/settings/contact').then(r => r.json()).then(setForm).catch(() => setForm({}));
@@ -46,6 +48,8 @@ export default function AdminContactContent() {
         <h1 className="font-cormorant text-3xl font-light tracking-[0.08em]">Liên Hệ</h1>
       </div>
 
+      <EditLangBar />
+
       <form onSubmit={handleSave} className="space-y-6">
         <div className="bg-white border border-gray-100 p-6 space-y-6">
           <div className="flex items-center justify-between">
@@ -61,7 +65,8 @@ export default function AdminContactContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Thành phố</label>
-                  <input type="text" value={s.city || ''} onChange={e => setShowroom(i, 'city', e.target.value)} className={inputCls} />
+                  <input type="text" value={s[k('city')] || ''} onChange={e => setShowroom(i, k('city'), e.target.value)} className={inputCls} />
+                  <ViHint text={s.city} />
                 </div>
                 <div>
                   <label className={labelCls}>Số điện thoại</label>
@@ -70,7 +75,8 @@ export default function AdminContactContent() {
               </div>
               <div>
                 <label className={labelCls}>Địa chỉ</label>
-                <input type="text" value={s.address || ''} onChange={e => setShowroom(i, 'address', e.target.value)} className={inputCls} />
+                <input type="text" value={s[k('address')] || ''} onChange={e => setShowroom(i, k('address'), e.target.value)} className={inputCls} />
+                  <ViHint text={s.address} />
               </div>
               <div>
                 <label className={labelCls}>Google Maps embed URL (tùy chọn)</label>
@@ -84,11 +90,13 @@ export default function AdminContactContent() {
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">Đặt May Riêng (Bespoke)</h2>
           <div>
             <label className={labelCls}>Tiêu đề</label>
-            <input type="text" value={form.bespoke_title || ''} onChange={e => set('bespoke_title', e.target.value)} className={inputCls} />
+            <input type="text" value={form[k('bespoke_title')] || ''} onChange={e => set(k('bespoke_title'), e.target.value)} className={inputCls} />
+            <ViHint text={form.bespoke_title} />
           </div>
           <div>
             <label className={labelCls}>Mô tả</label>
-            <textarea rows={3} value={form.bespoke_desc || ''} onChange={e => set('bespoke_desc', e.target.value)} className={inputCls + ' resize-none'} />
+            <textarea rows={3} value={form[k('bespoke_desc')] || ''} onChange={e => set(k('bespoke_desc'), e.target.value)} className={inputCls + ' resize-none'} />
+            <ViHint text={form.bespoke_desc} />
           </div>
         </div>
 

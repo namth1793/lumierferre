@@ -8,7 +8,6 @@ const crypto = require('crypto');
 const multer = require('multer');
 const kiotviet = require('./kiotviet');
 const cloudinaryStore = require('./cloudinary');
-const { createTranslator } = require('./translator');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
@@ -175,6 +174,16 @@ ensureColumn('orders', 'kiotviet_order_id', 'INTEGER');
 ensureColumn('orders', 'kiotviet_order_code', 'TEXT');
 ensureColumn('orders', 'kiotviet_sync_status', "TEXT DEFAULT 'not_synced'");
 ensureColumn('orders', 'kiotviet_sync_error', 'TEXT');
+
+// Bản tiếng Anh do admin tự nhập (để trống → website EN hiển thị bản tiếng Việt)
+const EN_COLUMNS = {
+  categories: ['name', 'description'],
+  collections: ['name', 'season', 'description'],
+  products: ['name', 'description', 'fabric', 'care', 'colors'],
+};
+for (const [table, cols] of Object.entries(EN_COLUMNS)) {
+  for (const c of cols) ensureColumn(table, `${c}_en`, c === 'colors' ? "TEXT DEFAULT '[]'" : "TEXT DEFAULT ''");
+}
 
 function slugify(str) {
   return (str || '').toLowerCase()
@@ -497,67 +506,88 @@ db.prepare(`
   'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=700&h=900&fit=crop',
 ]));
 
-// ── Tự động dịch VI → EN ─────────────────────────────────
-// Admin chỉ nhập tiếng Việt; khi lưu, server dịch luôn sang tiếng Anh rồi mới trả lời.
-// API công khai nhận ?lang=en để trả nội dung đã dịch.
-const translator = createTranslator(db);
+// ── Song ngữ VI / EN ─────────────────────────────────────
 const wantsEn = (req) => req.query.lang === 'en';
+const parseList = (v) => {
+  if (Array.isArray(v)) return v;
+  try { return JSON.parse(v || '[]'); } catch { return []; }
+};
+const toList = (v) => Array.isArray(v) ? v : (v || '').split(',').map(s => s.trim()).filter(Boolean);
 
-// Trường nội dung cần dịch trong site_settings (ở mọi cấp, kể cả trong hero_slides/team/stats/showrooms).
-// Không có trong danh sách: tên người, địa chỉ, SĐT, email, link, ảnh...
-const SETTING_TEXT_KEYS = new Set([
-  'announcement_text', 'footer_hours',
-  'label', 'title', 'subtitle', 'cta_text', 'role', 'city',
-  'about_label', 'about_title1', 'about_title2', 'about_desc1', 'about_desc2', 'quote_label', 'quote_text',
-  'story_label', 'heading_line1', 'heading_line2', 'story1', 'story2', 'story3',
-  'atelier_title1', 'atelier_title2', 'atelier_desc1', 'atelier_desc2',
-  'bespoke_title', 'bespoke_desc',
-]);
-
-function mapSettingTexts(value, fn, key) {
-  if (Array.isArray(value)) return value.map(v => mapSettingTexts(v, fn, key));
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapSettingTexts(v, fn, k)]));
-  }
-  return typeof value === 'string' && SETTING_TEXT_KEYS.has(key) ? fn(value) : value;
+// Bản EN: lấy trường *_en nếu admin đã nhập, chưa nhập thì giữ tiếng Việt
+function pickEn(row, cols) {
+  const out = { ...row };
+  for (const c of cols) if (typeof row[`${c}_en`] === 'string' && row[`${c}_en`].trim()) out[c] = row[`${c}_en`];
+  return out;
 }
-function settingTexts(value) {
-  const out = [];
-  mapSettingTexts(value, s => { out.push(s); return s; });
+const localizeCategory = (c) => pickEn(c, ['name', 'description']);
+const localizeCollection = (c) => pickEn(c, ['name', 'season', 'description']);
+function localizeProduct(p) {
+  const out = pickEn(p, ['name', 'description', 'fabric', 'care', 'category_name', 'collection_name']);
+  const colorsEn = parseList(p.colors_en);
+  out.colors = (p.colors || []).map((c, i) => colorsEn[i] || c); // màu EN khớp theo thứ tự với màu VI
   return out;
 }
 
-const productTexts = (p) => [p.name, p.description, p.fabric, p.care,
-  ...(Array.isArray(p.colors) ? p.colors : JSON.parse(p.colors || '[]'))];
-const categoryTexts = (c) => [c.name, c.description];
-const collectionTexts = (c) => [c.name, c.season, c.description];
-
-const tr = translator.tr;
-const localizeProduct = (p) => ({
-  ...p,
-  name: tr(p.name), description: tr(p.description), fabric: tr(p.fabric), care: tr(p.care),
-  colors: Array.isArray(p.colors) ? p.colors.map(tr) : p.colors,
-  category_name: tr(p.category_name), collection_name: tr(p.collection_name),
-});
-const localizeCategory = (c) => ({ ...c, name: tr(c.name), description: tr(c.description) });
-const localizeCollection = (c) => ({ ...c, name: tr(c.name), season: tr(c.season), description: tr(c.description) });
-
-// Dịch toàn bộ nội dung đang có (chạy ngầm khi khởi động / sau khi đồng bộ KiotViet)
-function translateAllContent() {
-  const texts = [
-    ...db.prepare('SELECT name, description FROM categories').all().flatMap(categoryTexts),
-    ...db.prepare('SELECT name, season, description FROM collections').all().flatMap(collectionTexts),
-    ...db.prepare('SELECT name, description, fabric, care, colors FROM products').all().flatMap(productTexts),
-    ...db.prepare('SELECT value FROM site_settings').all().flatMap(r => settingTexts(JSON.parse(r.value))),
-  ];
-  return translator.ensure(texts).catch(e => console.warn('⚠ Dịch nội dung thất bại:', e.message));
+// Nội dung trang (site_settings): bản EN nằm ngay cạnh bản VI với hậu tố _en (vd: quote_text_en,
+// hero_slides[0].label_en) → thêm/xóa slide, thành viên... thì 2 bản luôn đi cùng nhau
+function localizeSetting(value) {
+  if (Array.isArray(value)) return value.map(localizeSetting);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [k, v] of Object.entries(value)) if (!k.endsWith('_en')) out[k] = localizeSetting(v);
+  for (const [k, v] of Object.entries(value)) {
+    if (k.endsWith('_en') && typeof v === 'string' && v.trim()) out[k.slice(0, -3)] = v;
+  }
+  return out;
 }
 
-// Sau khi admin lưu: dịch nội dung của bản ghi vừa ghi (đọc lại từ DB để lấy đúng dữ liệu đã lưu)
-const translateRow = (table, toTexts, id) => {
-  const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
-  return row ? translator.ensureWithin(toTexts(row)) : Promise.resolve(true);
-};
+// Điền sẵn bản EN cho nội dung mẫu: chỉ điền trường EN còn trống mà nội dung VI vẫn đúng như mẫu.
+// Chạy đúng 1 lần cho mỗi DB (đánh dấu bằng PRAGMA user_version) → admin cố ý xóa trống bản EN thì không bị điền lại.
+const SEED_EN = require('./seed-en');
+const isAscii = (s) => /^[\x20-\x7E]+$/.test(s);
+function seedSettingEn(value) {
+  if (Array.isArray(value)) return value.map(seedSettingEn);
+  if (!value || typeof value !== 'object') return value;
+  const out = { ...value };
+  for (const [k, v] of Object.entries(value)) {
+    if (typeof v === 'string') {
+      if (!k.endsWith('_en') && !out[`${k}_en`] && SEED_EN[v]) out[`${k}_en`] = SEED_EN[v];
+    } else if (v && typeof v === 'object') {
+      out[k] = seedSettingEn(v);
+    }
+  }
+  return out;
+}
+function seedEnglishContent() {
+  for (const [table, cols] of Object.entries(EN_COLUMNS)) {
+    for (const row of db.prepare(`SELECT * FROM ${table}`).all()) {
+      const updates = {};
+      for (const c of cols) {
+        if (c === 'colors') {
+          const vi = parseList(row.colors);
+          if (!parseList(row.colors_en).length && vi.length && vi.every(x => SEED_EN[x] || isAscii(x))) {
+            updates.colors_en = JSON.stringify(vi.map(x => SEED_EN[x] || x));
+          }
+        } else if (!row[`${c}_en`] && SEED_EN[row[c]]) {
+          updates[`${c}_en`] = SEED_EN[row[c]];
+        }
+      }
+      const keys = Object.keys(updates);
+      if (keys.length) {
+        db.prepare(`UPDATE ${table} SET ${keys.map(k => `${k}=?`).join(', ')} WHERE id=?`).run(...keys.map(k => updates[k]), row.id);
+      }
+    }
+  }
+  for (const r of db.prepare('SELECT key, value FROM site_settings').all()) {
+    const seeded = JSON.stringify(seedSettingEn(JSON.parse(r.value)));
+    if (seeded !== r.value) db.prepare('UPDATE site_settings SET value=? WHERE key=?').run(seeded, r.key);
+  }
+}
+if (db.pragma('user_version', { simple: true }) < 1) {
+  db.transaction(seedEnglishContent)();
+  db.pragma('user_version = 1');
+}
 
 // ── Routes ──────────────────────────────────────────────
 
@@ -575,14 +605,15 @@ app.get('/api/settings', (req, res) => {
   const rows = db.prepare('SELECT key, value FROM site_settings').all();
   const settings = {};
   for (const r of rows) { try { settings[r.key] = JSON.parse(r.value); } catch { settings[r.key] = null; } }
-  res.json(wantsEn(req) ? mapSettingTexts(settings, tr) : settings);
+  res.json(wantsEn(req) ? localizeSetting(settings) : settings);
 });
 
 app.get('/api/products', (req, res) => {
   const { category, collection, featured, is_new, bridal, search, sort, page = 1, limit = 20 } = req.query;
 
   let q = `
-    SELECT p.*, c.name AS category_name, c.slug AS category_slug, col.name AS collection_name
+    SELECT p.*, c.name AS category_name, c.name_en AS category_name_en, c.slug AS category_slug,
+      col.name AS collection_name, col.name_en AS collection_name_en
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN collections col ON p.collection_id = col.id
@@ -595,15 +626,11 @@ app.get('/api/products', (req, res) => {
   if (featured === 'true') { q += ' AND p.is_featured = 1'; }
   if (is_new === 'true') { q += ' AND p.is_new = 1'; }
   if (bridal === 'true') { q += ' AND p.is_bridal = 1'; }
-  // Tìm theo tên tiếng Việt hoặc tên tiếng Anh đã dịch
-  if (search) {
-    q += ` AND (p.name LIKE ? OR EXISTS (SELECT 1 FROM translations t WHERE t.lang = 'en' AND t.source = p.name AND t.text LIKE ?))`;
-    params.push(`%${search}%`, `%${search}%`);
-  }
+  if (search) { q += ' AND (p.name LIKE ? OR p.name_en LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
 
   if (sort === 'price-asc') q += ' ORDER BY p.price ASC';
   else if (sort === 'price-desc') q += ' ORDER BY p.price DESC';
-  else if (sort === 'name-asc') q += ' ORDER BY p.name ASC';
+  else if (sort === 'name-asc') q += wantsEn(req) ? " ORDER BY COALESCE(NULLIF(p.name_en, ''), p.name) ASC" : ' ORDER BY p.name ASC';
   else if (sort === 'new') q += ' ORDER BY p.created_at DESC';
   else q += ' ORDER BY p.is_featured DESC, p.id DESC';
 
@@ -624,7 +651,8 @@ app.get('/api/products', (req, res) => {
 
 app.get('/api/products/:slug', (req, res) => {
   const p = db.prepare(`
-    SELECT p.*, c.name AS category_name, c.slug AS category_slug, col.name AS collection_name
+    SELECT p.*, c.name AS category_name, c.name_en AS category_name_en, c.slug AS category_slug,
+      col.name AS collection_name, col.name_en AS collection_name_en
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN collections col ON p.collection_id = col.id
@@ -714,7 +742,7 @@ app.get('/api/admin/products', requireAdmin, (req, res) => {
     FROM products p LEFT JOIN categories c ON p.category_id=c.id
     LEFT JOIN collections col ON p.collection_id=col.id WHERE 1=1`;
   const params = [];
-  if (search) { q += ' AND p.name LIKE ?'; params.push(`%${search}%`); }
+  if (search) { q += ' AND (p.name LIKE ? OR p.name_en LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
   q += ' ORDER BY p.id DESC';
   const total = db.prepare(`SELECT COUNT(*) as n FROM (${q})`).get(...params).n;
   const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -725,9 +753,10 @@ app.get('/api/admin/products', requireAdmin, (req, res) => {
   res.json({ products: rows, total, page: parseInt(page) });
 });
 
-app.post('/api/admin/products', requireAdmin, async (req, res) => {
+app.post('/api/admin/products', requireAdmin, (req, res) => {
   const { name, slug, price, original_price, category_id, collection_id, description, fabric, care,
-    sizes, colors, images, is_featured, is_new, is_bridal, is_soldout } = req.body;
+    sizes, colors, images, is_featured, is_new, is_bridal, is_soldout,
+    name_en, description_en, fabric_en, care_en, colors_en } = req.body;
   if (!name || !price) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
   // Tên trùng (vd: cùng mẫu khác màu) → thêm hậu tố -1, -2... để slug không bị trùng
   const base_slug = slugify(slug || name) || 'san-pham';
@@ -736,39 +765,42 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
   while (slugTaken.get(auto_slug)) auto_slug = `${base_slug}-${n++}`;
   try {
     const result = db.prepare(`INSERT INTO products (name,slug,price,original_price,category_id,collection_id,
-      description,fabric,care,sizes,colors,images,is_featured,is_new,is_bridal,is_soldout)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      description,fabric,care,sizes,colors,images,is_featured,is_new,is_bridal,is_soldout,
+      name_en,description_en,fabric_en,care_en,colors_en)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       name, auto_slug, parseInt(price), original_price?parseInt(original_price):null,
       category_id||null, collection_id||null, description||'', fabric||'', care||'',
       JSON.stringify(Array.isArray(sizes)?sizes:(sizes||'').split(',').map(s=>s.trim()).filter(Boolean)||['XS','S','M','L','XL']),
       JSON.stringify(Array.isArray(colors)?colors:(colors||'').split(',').map(s=>s.trim()).filter(Boolean)||['Đen','Trắng','Kem']),
       JSON.stringify(Array.isArray(images)?images:(images||'').split(',').map(s=>s.trim()).filter(Boolean)||[]),
-      is_featured?1:0, is_new?1:0, is_bridal?1:0, is_soldout?1:0);
-    const translated = await translateRow('products', productTexts, result.lastInsertRowid);
-    res.json({ success: true, id: result.lastInsertRowid, translated });
+      is_featured?1:0, is_new?1:0, is_bridal?1:0, is_soldout?1:0,
+      name_en||'', description_en||'', fabric_en||'', care_en||'', JSON.stringify(toList(colors_en)));
+    res.json({ success: true, id: result.lastInsertRowid });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.get('/api/admin/products/:id', requireAdmin, (req, res) => {
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: 'Không tìm thấy sản phẩm.' });
-  res.json({ ...p, images: JSON.parse(p.images||'[]'), sizes: JSON.parse(p.sizes||'[]'), colors: JSON.parse(p.colors||'[]') });
+  res.json({ ...p, images: JSON.parse(p.images||'[]'), sizes: JSON.parse(p.sizes||'[]'), colors: JSON.parse(p.colors||'[]'), colors_en: parseList(p.colors_en) });
 });
 
-app.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
+app.put('/api/admin/products/:id', requireAdmin, (req, res) => {
   const { name, price, original_price, category_id, collection_id, description, fabric, care,
-    sizes, colors, images, is_featured, is_new, is_bridal, is_soldout } = req.body;
+    sizes, colors, images, is_featured, is_new, is_bridal, is_soldout,
+    name_en, description_en, fabric_en, care_en, colors_en } = req.body;
   try {
     db.prepare(`UPDATE products SET name=?,price=?,original_price=?,category_id=?,collection_id=?,
-      description=?,fabric=?,care=?,sizes=?,colors=?,images=?,is_featured=?,is_new=?,is_bridal=?,is_soldout=?
+      description=?,fabric=?,care=?,sizes=?,colors=?,images=?,is_featured=?,is_new=?,is_bridal=?,is_soldout=?,
+      name_en=?,description_en=?,fabric_en=?,care_en=?,colors_en=?
       WHERE id=?`).run(name, parseInt(price), original_price?parseInt(original_price):null,
       category_id||null, collection_id||null, description||'', fabric||'', care||'',
       JSON.stringify(Array.isArray(sizes)?sizes:(sizes||'').split(',').map(s=>s.trim()).filter(Boolean)),
       JSON.stringify(Array.isArray(colors)?colors:(colors||'').split(',').map(s=>s.trim()).filter(Boolean)),
       JSON.stringify(Array.isArray(images)?images:(images||'').split('\n').map(s=>s.trim()).filter(Boolean)),
-      is_featured?1:0, is_new?1:0, is_bridal?1:0, is_soldout?1:0, req.params.id);
-    const translated = await translateRow('products', productTexts, req.params.id);
-    res.json({ success: true, translated });
+      is_featured?1:0, is_new?1:0, is_bridal?1:0, is_soldout?1:0,
+      name_en||'', description_en||'', fabric_en||'', care_en||'', JSON.stringify(toList(colors_en)), req.params.id);
+    res.json({ success: true });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -914,40 +946,35 @@ app.get('/api/admin/settings/:key', requireAdmin, (req, res) => {
   res.json(JSON.parse(row.value));
 });
 
-app.put('/api/admin/settings/:key', requireAdmin, async (req, res) => {
+app.put('/api/admin/settings/:key', requireAdmin, (req, res) => {
   const { key } = req.params;
   if (!DEFAULT_SETTINGS[key]) return res.status(404).json({ error: 'Không tìm thấy mục cài đặt.' });
   db.prepare(`
     INSERT INTO site_settings (key, value) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
   `).run(key, JSON.stringify(req.body));
-  const translated = await translator.ensureWithin(settingTexts(req.body));
-  res.json({ success: true, translated });
+  res.json({ success: true });
 });
 
 // ─── Danh mục (Categories) ──────────────────────────────────────────
-app.post('/api/admin/categories', requireAdmin, async (req, res) => {
-  const { name, description, image, sort_order } = req.body;
+app.post('/api/admin/categories', requireAdmin, (req, res) => {
+  const { name, description, image, sort_order, name_en, description_en } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên danh mục.' });
   try {
-    const result = db.prepare('INSERT INTO categories (name, slug, description, image, sort_order) VALUES (?,?,?,?,?)')
-      .run(name, slugify(name), description || '', image || '', sort_order || 0);
-    const translated = await translateRow('categories', categoryTexts, result.lastInsertRowid);
-    res.json({ success: true, id: result.lastInsertRowid, translated });
+    const result = db.prepare('INSERT INTO categories (name, slug, description, image, sort_order, name_en, description_en) VALUES (?,?,?,?,?,?,?)')
+      .run(name, slugify(name), description || '', image || '', sort_order || 0, name_en || '', description_en || '');
+    res.json({ success: true, id: result.lastInsertRowid });
   } catch (e) {
     res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Danh mục này đã tồn tại.' : e.message });
   }
 });
 
-app.put('/api/admin/categories/:id', requireAdmin, async (req, res) => {
-  const { name, description, image, sort_order } = req.body;
+app.put('/api/admin/categories/:id', requireAdmin, (req, res) => {
+  const { name, description, image, sort_order, name_en, description_en } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên danh mục.' });
-  try {
-    db.prepare('UPDATE categories SET name=?, description=?, image=?, sort_order=? WHERE id=?')
-      .run(name, description || '', image || '', sort_order || 0, req.params.id);
-  } catch (e) { return res.status(400).json({ error: e.message }); }
-  const translated = await translateRow('categories', categoryTexts, req.params.id);
-  res.json({ success: true, translated });
+  db.prepare('UPDATE categories SET name=?, description=?, image=?, sort_order=?, name_en=?, description_en=? WHERE id=?')
+    .run(name, description || '', image || '', sort_order || 0, name_en || '', description_en || '', req.params.id);
+  res.json({ success: true });
 });
 
 app.delete('/api/admin/categories/:id', requireAdmin, (req, res) => {
@@ -962,28 +989,25 @@ app.delete('/api/admin/categories/:id', requireAdmin, (req, res) => {
 });
 
 // ─── Bộ sưu tập (Collections) ────────────────────────────────────────
-app.post('/api/admin/collections', requireAdmin, async (req, res) => {
-  const { name, season, description, cover_image } = req.body;
+app.post('/api/admin/collections', requireAdmin, (req, res) => {
+  const { name, season, description, cover_image, name_en, season_en, description_en } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên bộ sưu tập.' });
   try {
-    const result = db.prepare('INSERT INTO collections (name, slug, season, description, cover_image) VALUES (?,?,?,?,?)')
-      .run(name, slugify(name), season || '', description || '', cover_image || '');
-    const translated = await translateRow('collections', collectionTexts, result.lastInsertRowid);
-    res.json({ success: true, id: result.lastInsertRowid, translated });
+    const result = db.prepare(`INSERT INTO collections (name, slug, season, description, cover_image, name_en, season_en, description_en)
+      VALUES (?,?,?,?,?,?,?,?)`)
+      .run(name, slugify(name), season || '', description || '', cover_image || '', name_en || '', season_en || '', description_en || '');
+    res.json({ success: true, id: result.lastInsertRowid });
   } catch (e) {
     res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Bộ sưu tập này đã tồn tại.' : e.message });
   }
 });
 
-app.put('/api/admin/collections/:id', requireAdmin, async (req, res) => {
-  const { name, season, description, cover_image } = req.body;
+app.put('/api/admin/collections/:id', requireAdmin, (req, res) => {
+  const { name, season, description, cover_image, name_en, season_en, description_en } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên bộ sưu tập.' });
-  try {
-    db.prepare('UPDATE collections SET name=?, season=?, description=?, cover_image=? WHERE id=?')
-      .run(name, season || '', description || '', cover_image || '', req.params.id);
-  } catch (e) { return res.status(400).json({ error: e.message }); }
-  const translated = await translateRow('collections', collectionTexts, req.params.id);
-  res.json({ success: true, translated });
+  db.prepare('UPDATE collections SET name=?, season=?, description=?, cover_image=?, name_en=?, season_en=?, description_en=? WHERE id=?')
+    .run(name, season || '', description || '', cover_image || '', name_en || '', season_en || '', description_en || '', req.params.id);
+  res.json({ success: true });
 });
 
 app.delete('/api/admin/collections/:id', requireAdmin, (req, res) => {
@@ -1057,7 +1081,6 @@ app.post('/api/admin/kiotviet/sync-products', requireAdmin, async (_req, res) =>
       }
     }
 
-    translateAllContent();
     res.json({
       success: true,
       categories: { total: kvCategories.length, created: catCreated, updated: catUpdated },
@@ -1172,6 +1195,4 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`✦ LUMIE FERRE Backend → http://localhost:${PORT}`);
-  console.log(`✦ Tự động dịch EN: ${translator.provider}`);
-  translateAllContent();
 });

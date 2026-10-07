@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { ImageUploaderSingle } from '../../components/admin/ImageUploader';
+import { EditLangBar, ViHint, useEditLang } from '../../components/admin/Bilingual';
 
 export default function AdminAboutContent() {
   const { authFetch } = useAdmin();
@@ -10,6 +11,7 @@ export default function AdminAboutContent() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const { k } = useEditLang();
 
   useEffect(() => {
     authFetch('/api/admin/settings/about').then(r => r.json()).then(setForm).catch(() => setForm({}));
@@ -56,6 +58,8 @@ export default function AdminAboutContent() {
         <h1 className="font-cormorant text-3xl font-light tracking-[0.08em]">Giới Thiệu</h1>
       </div>
 
+      <EditLangBar />
+
       <form onSubmit={handleSave} className="space-y-6">
         <div className="bg-white border border-gray-100 p-6 space-y-5">
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">Banner Đầu Trang</h2>
@@ -66,22 +70,26 @@ export default function AdminAboutContent() {
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">Câu Chuyện Thương Hiệu</h2>
           <div>
             <label className={labelCls}>Nhãn nhỏ</label>
-            <input type="text" value={form.story_label || ''} onChange={e => set('story_label', e.target.value)} className={inputCls} />
+            <input type="text" value={form[k('story_label')] || ''} onChange={e => set(k('story_label'), e.target.value)} className={inputCls} />
+            <ViHint text={form.story_label} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Tiêu đề dòng 1</label>
-              <input type="text" value={form.heading_line1 || ''} onChange={e => set('heading_line1', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('heading_line1')] || ''} onChange={e => set(k('heading_line1'), e.target.value)} className={inputCls} />
+            <ViHint text={form.heading_line1} />
             </div>
             <div>
               <label className={labelCls}>Tiêu đề dòng 2 (in nghiêng)</label>
-              <input type="text" value={form.heading_line2 || ''} onChange={e => set('heading_line2', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('heading_line2')] || ''} onChange={e => set(k('heading_line2'), e.target.value)} className={inputCls} />
+            <ViHint text={form.heading_line2} />
             </div>
           </div>
-          {['story1', 'story2', 'story3'].map((k, i) => (
-            <div key={k}>
+          {['story1', 'story2', 'story3'].map((key, i) => (
+            <div key={key}>
               <label className={labelCls}>Đoạn {i + 1}</label>
-              <textarea rows={3} value={form[k] || ''} onChange={e => set(k, e.target.value)} className={inputCls + ' resize-none'} />
+              <textarea rows={3} value={form[k(key)] || ''} onChange={e => set(k(key), e.target.value)} className={inputCls + ' resize-none'} />
+              <ViHint text={form[key]} />
             </div>
           ))}
         </div>
@@ -95,20 +103,24 @@ export default function AdminAboutContent() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Tiêu đề dòng 1</label>
-              <input type="text" value={form.atelier_title1 || ''} onChange={e => set('atelier_title1', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('atelier_title1')] || ''} onChange={e => set(k('atelier_title1'), e.target.value)} className={inputCls} />
+            <ViHint text={form.atelier_title1} />
             </div>
             <div>
               <label className={labelCls}>Tiêu đề dòng 2</label>
-              <input type="text" value={form.atelier_title2 || ''} onChange={e => set('atelier_title2', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('atelier_title2')] || ''} onChange={e => set(k('atelier_title2'), e.target.value)} className={inputCls} />
+            <ViHint text={form.atelier_title2} />
             </div>
           </div>
           <div>
             <label className={labelCls}>Đoạn mô tả 1</label>
-            <textarea rows={2} value={form.atelier_desc1 || ''} onChange={e => set('atelier_desc1', e.target.value)} className={inputCls + ' resize-none'} />
+            <textarea rows={2} value={form[k('atelier_desc1')] || ''} onChange={e => set(k('atelier_desc1'), e.target.value)} className={inputCls + ' resize-none'} />
+            <ViHint text={form.atelier_desc1} />
           </div>
           <div>
             <label className={labelCls}>Đoạn mô tả 2</label>
-            <textarea rows={2} value={form.atelier_desc2 || ''} onChange={e => set('atelier_desc2', e.target.value)} className={inputCls + ' resize-none'} />
+            <textarea rows={2} value={form[k('atelier_desc2')] || ''} onChange={e => set(k('atelier_desc2'), e.target.value)} className={inputCls + ' resize-none'} />
+            <ViHint text={form.atelier_desc2} />
           </div>
         </div>
 
@@ -131,7 +143,8 @@ export default function AdminAboutContent() {
                 </div>
                 <div>
                   <label className={labelCls}>Chức vụ</label>
-                  <input type="text" value={m.role || ''} onChange={e => setTeam(i, 'role', e.target.value)} className={inputCls} />
+                  <input type="text" value={m[k('role')] || ''} onChange={e => setTeam(i, k('role'), e.target.value)} className={inputCls} />
+                  <ViHint text={m.role} />
                 </div>
               </div>
             </div>
@@ -156,7 +169,8 @@ export default function AdminAboutContent() {
                 </div>
                 <div>
                   <label className={labelCls}>Nhãn</label>
-                  <input type="text" value={s.label || ''} onChange={e => setStat(i, 'label', e.target.value)} className={inputCls} />
+                  <input type="text" value={s[k('label')] || ''} onChange={e => setStat(i, k('label'), e.target.value)} className={inputCls} />
+                  <ViHint text={s.label} />
                 </div>
               </div>
             ))}

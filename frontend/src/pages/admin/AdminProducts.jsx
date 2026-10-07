@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
+import { EditLangBar, useEditLang } from '../../components/admin/Bilingual';
 
 const fmt = (n) => new Intl.NumberFormat('vi-VN').format(n) + '₫';
 
@@ -12,6 +13,7 @@ export default function AdminProducts() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState(null);
+  const { isEn } = useEditLang();
   const LIMIT = 20;
 
   const fetchProducts = useCallback(() => {
@@ -47,6 +49,8 @@ export default function AdminProducts() {
         </div>
         <Link to="/admin/products/new" className="btn-dark">+ Thêm Sản Phẩm</Link>
       </div>
+
+      <EditLangBar />
 
       {/* Search */}
       <div className="mb-6 flex gap-3">
@@ -87,7 +91,10 @@ export default function AdminProducts() {
                       <img src={p.images[0]} alt={p.name} className="w-10 h-12 object-cover flex-shrink-0 bg-gray-50" />
                     )}
                     <div>
-                      <p className="text-sm font-inter font-medium">{p.name}</p>
+                      <p className="text-sm font-inter font-medium">
+                        {(isEn && p.name_en) || p.name}
+                        {isEn && !p.name_en && <span className="ml-2 text-[9px] tracking-[0.1em] uppercase text-amber-600">chưa có EN</span>}
+                      </p>
                       <p className="text-[10px] text-warm-gray font-inter">{p.slug}</p>
                     </div>
                   </div>

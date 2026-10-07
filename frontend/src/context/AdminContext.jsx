@@ -12,6 +12,15 @@ export function AdminProvider({ children }) {
     } catch { return null; }
   });
 
+  // Admin đang sửa bản tiếng Việt hay tiếng Anh (nhớ qua các trang và lần mở sau)
+  const [editLang, setEditLangState] = useState(() => {
+    try { return localStorage.getItem('lf_admin_edit_lang') === 'en' ? 'en' : 'vi'; } catch { return 'vi'; }
+  });
+  const setEditLang = (l) => {
+    setEditLangState(l);
+    try { localStorage.setItem('lf_admin_edit_lang', l); } catch {}
+  };
+
   const login = (token, username) => {
     localStorage.setItem('lf_admin_token', token);
     localStorage.setItem('lf_admin_user', JSON.stringify({ username }));
@@ -39,7 +48,7 @@ export function AdminProvider({ children }) {
   };
 
   return (
-    <AdminContext.Provider value={{ admin, login, logout, authFetch }}>
+    <AdminContext.Provider value={{ admin, login, logout, authFetch, editLang, setEditLang }}>
       {children}
     </AdminContext.Provider>
   );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { ImageUploaderSingle } from '../../components/admin/ImageUploader';
+import { EditLangBar, ViHint, useEditLang } from '../../components/admin/Bilingual';
 
 export default function AdminHomeContent() {
   const { authFetch } = useAdmin();
@@ -10,6 +11,7 @@ export default function AdminHomeContent() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const { k } = useEditLang();
 
   useEffect(() => {
     authFetch('/api/admin/settings/home').then(r => r.json()).then(setForm).catch(() => setForm({}));
@@ -47,6 +49,8 @@ export default function AdminHomeContent() {
         <h1 className="font-cormorant text-3xl font-light tracking-[0.08em]">Trang Chủ</h1>
       </div>
 
+      <EditLangBar />
+
       <form onSubmit={handleSave} className="space-y-6">
         <div className="bg-white border border-gray-100 p-6 space-y-6">
           <div className="flex items-center justify-between">
@@ -63,21 +67,25 @@ export default function AdminHomeContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Nhãn nhỏ (phía trên tiêu đề)</label>
-                  <input type="text" value={s.label || ''} onChange={e => setSlide(i, 'label', e.target.value)} className={inputCls} />
+                  <input type="text" value={s[k('label')] || ''} onChange={e => setSlide(i, k('label'), e.target.value)} className={inputCls} />
+                  <ViHint text={s.label} />
                 </div>
                 <div>
                   <label className={labelCls}>Tiêu đề lớn</label>
-                  <input type="text" value={s.title || ''} onChange={e => setSlide(i, 'title', e.target.value)} className={inputCls} />
+                  <input type="text" value={s[k('title')] || ''} onChange={e => setSlide(i, k('title'), e.target.value)} className={inputCls} />
+                  <ViHint text={s.title} />
                 </div>
               </div>
               <div>
                 <label className={labelCls}>Mô tả phụ</label>
-                <input type="text" value={s.subtitle || ''} onChange={e => setSlide(i, 'subtitle', e.target.value)} className={inputCls} />
+                <input type="text" value={s[k('subtitle')] || ''} onChange={e => setSlide(i, k('subtitle'), e.target.value)} className={inputCls} />
+                  <ViHint text={s.subtitle} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Nút bấm (text)</label>
-                  <input type="text" value={s.cta_text || ''} onChange={e => setSlide(i, 'cta_text', e.target.value)} className={inputCls} />
+                  <input type="text" value={s[k('cta_text')] || ''} onChange={e => setSlide(i, k('cta_text'), e.target.value)} className={inputCls} />
+                  <ViHint text={s.cta_text} />
                 </div>
                 <div>
                   <label className={labelCls}>Nút bấm (liên kết)</label>
@@ -93,25 +101,30 @@ export default function AdminHomeContent() {
           <ImageUploaderSingle label="Ảnh" value={form.about_image} onChange={(v) => set('about_image', v)} />
           <div>
             <label className={labelCls}>Nhãn nhỏ</label>
-            <input type="text" value={form.about_label || ''} onChange={e => set('about_label', e.target.value)} className={inputCls} />
+            <input type="text" value={form[k('about_label')] || ''} onChange={e => set(k('about_label'), e.target.value)} className={inputCls} />
+            <ViHint text={form.about_label} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Tiêu đề dòng 1</label>
-              <input type="text" value={form.about_title1 || ''} onChange={e => set('about_title1', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('about_title1')] || ''} onChange={e => set(k('about_title1'), e.target.value)} className={inputCls} />
+            <ViHint text={form.about_title1} />
             </div>
             <div>
               <label className={labelCls}>Tiêu đề dòng 2 (in nghiêng)</label>
-              <input type="text" value={form.about_title2 || ''} onChange={e => set('about_title2', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('about_title2')] || ''} onChange={e => set(k('about_title2'), e.target.value)} className={inputCls} />
+            <ViHint text={form.about_title2} />
             </div>
           </div>
           <div>
             <label className={labelCls}>Đoạn mô tả 1</label>
-            <textarea rows={2} value={form.about_desc1 || ''} onChange={e => set('about_desc1', e.target.value)} className={inputCls + ' resize-none'} />
+            <textarea rows={2} value={form[k('about_desc1')] || ''} onChange={e => set(k('about_desc1'), e.target.value)} className={inputCls + ' resize-none'} />
+            <ViHint text={form.about_desc1} />
           </div>
           <div>
             <label className={labelCls}>Đoạn mô tả 2</label>
-            <textarea rows={2} value={form.about_desc2 || ''} onChange={e => set('about_desc2', e.target.value)} className={inputCls + ' resize-none'} />
+            <textarea rows={2} value={form[k('about_desc2')] || ''} onChange={e => set(k('about_desc2'), e.target.value)} className={inputCls + ' resize-none'} />
+            <ViHint text={form.about_desc2} />
           </div>
         </div>
 
@@ -119,11 +132,13 @@ export default function AdminHomeContent() {
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">Câu Châm Ngôn (nền đen cuối trang)</h2>
           <div>
             <label className={labelCls}>Nhãn nhỏ</label>
-            <input type="text" value={form.quote_label || ''} onChange={e => set('quote_label', e.target.value)} className={inputCls} />
+            <input type="text" value={form[k('quote_label')] || ''} onChange={e => set(k('quote_label'), e.target.value)} className={inputCls} />
+            <ViHint text={form.quote_label} />
           </div>
           <div>
             <label className={labelCls}>Nội dung câu châm ngôn</label>
-            <textarea rows={2} value={form.quote_text || ''} onChange={e => set('quote_text', e.target.value)} className={inputCls + ' resize-none'} />
+            <textarea rows={2} value={form[k('quote_text')] || ''} onChange={e => set(k('quote_text'), e.target.value)} className={inputCls + ' resize-none'} />
+            <ViHint text={form.quote_text} />
           </div>
         </div>
 

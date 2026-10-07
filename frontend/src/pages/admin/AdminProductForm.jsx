@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
 import { ImageUploaderMulti } from '../../components/admin/ImageUploader';
+import { EditLangBar, ViHint, useEditLang } from '../../components/admin/Bilingual';
 
 export default function AdminProductForm() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const { authFetch } = useAdmin();
   const navigate = useNavigate();
+  const { isEn, k } = useEditLang();
 
   const [categories, setCategories] = useState([]);
   const [collections, setCollections] = useState([]);
@@ -21,6 +23,7 @@ export default function AdminProductForm() {
     sizes: 'XS,S,M,L,XL', colors: 'Đen,Trắng,Kem',
     images: [],
     is_featured: false, is_new: false, is_bridal: false, is_soldout: false,
+    name_en: '', description_en: '', fabric_en: '', care_en: '', colors_en: '',
   });
 
   useEffect(() => {
@@ -39,6 +42,8 @@ export default function AdminProductForm() {
           images: p.images || [],
           is_featured: !!p.is_featured, is_new: !!p.is_new,
           is_bridal: !!p.is_bridal, is_soldout: !!p.is_soldout,
+          name_en: p.name_en || '', description_en: p.description_en || '', fabric_en: p.fabric_en || '',
+          care_en: p.care_en || '', colors_en: (p.colors_en || []).join(','),
         });
       }).catch(() => setError('Không thể kết nối máy chủ')).finally(() => setLoading(false));
     }
@@ -51,7 +56,7 @@ export default function AdminProductForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.price) { setError('Vui lòng điền tên và giá sản phẩm.'); return; }
+    if (!form.name || !form.price) { setError('Vui lòng điền tên sản phẩm (bản tiếng Việt) và giá.'); return; }
     setSaving(true); setError('');
     try {
       const payload = {
@@ -62,6 +67,7 @@ export default function AdminProductForm() {
         collection_id: form.collection_id ? parseInt(form.collection_id) : null,
         sizes: form.sizes.split(',').map(s => s.trim()).filter(Boolean),
         colors: form.colors.split(',').map(s => s.trim()).filter(Boolean),
+        colors_en: form.colors_en.split(',').map(s => s.trim()).filter(Boolean),
         images: form.images,
       };
       const url = isEdit ? `/api/admin/products/${id}` : '/api/admin/products';
@@ -86,12 +92,15 @@ export default function AdminProductForm() {
         <h1 className="font-cormorant text-3xl font-light tracking-[0.08em]">{isEdit ? 'Chỉnh Sửa Sản Phẩm' : 'Thêm Sản Phẩm'}</h1>
       </div>
 
+      <EditLangBar />
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white border border-gray-100 p-6 space-y-5">
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">Thông Tin Cơ Bản</h2>
           <div>
-            <label className={labelCls}>Tên sản phẩm <span className="text-red-500">*</span></label>
-            <input type="text" name="name" required value={form.name} onChange={handleChange} className={inputCls} placeholder="Tên sản phẩm" />
+            <label className={labelCls}>Tên sản phẩm {!isEn && <span className="text-red-500">*</span>}</label>
+            <input type="text" name={k('name')} required={!isEn} value={form[k('name')]} onChange={handleChange} className={inputCls} placeholder={isEn ? 'Product name' : 'Tên sản phẩm'} />
+            <ViHint text={form.name} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -125,16 +134,19 @@ export default function AdminProductForm() {
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">Mô Tả & Chất Liệu</h2>
           <div>
             <label className={labelCls}>Mô tả</label>
-            <textarea name="description" rows={4} value={form.description} onChange={handleChange} className={inputCls + ' resize-none'} placeholder="Mô tả sản phẩm..." />
+            <textarea name={k('description')} rows={4} value={form[k('description')]} onChange={handleChange} className={inputCls + ' resize-none'} placeholder={isEn ? 'Product description...' : 'Mô tả sản phẩm...'} />
+            <ViHint text={form.description} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Chất liệu</label>
-              <input type="text" name="fabric" value={form.fabric} onChange={handleChange} className={inputCls} placeholder="Lụa tơ tằm 100%..." />
+              <input type="text" name={k('fabric')} value={form[k('fabric')]} onChange={handleChange} className={inputCls} placeholder={isEn ? '100% mulberry silk...' : 'Lụa tơ tằm 100%...'} />
+              <ViHint text={form.fabric} />
             </div>
             <div>
               <label className={labelCls}>Hướng dẫn giặt</label>
-              <input type="text" name="care" value={form.care} onChange={handleChange} className={inputCls} placeholder="Giặt tay nước lạnh..." />
+              <input type="text" name={k('care')} value={form[k('care')]} onChange={handleChange} className={inputCls} placeholder={isEn ? 'Hand wash in cold water...' : 'Giặt tay nước lạnh...'} />
+              <ViHint text={form.care} />
             </div>
           </div>
         </div>
@@ -147,8 +159,9 @@ export default function AdminProductForm() {
               <input type="text" name="sizes" value={form.sizes} onChange={handleChange} className={inputCls} placeholder="XS,S,M,L,XL" />
             </div>
             <div>
-              <label className={labelCls}>Màu sắc (cách nhau bằng dấu phẩy)</label>
-              <input type="text" name="colors" value={form.colors} onChange={handleChange} className={inputCls} placeholder="Đen,Trắng,Kem" />
+              <label className={labelCls}>Màu sắc (cách nhau bằng dấu phẩy{isEn ? ', đúng thứ tự như bản tiếng Việt' : ''})</label>
+              <input type="text" name={k('colors')} value={form[k('colors')]} onChange={handleChange} className={inputCls} placeholder={isEn ? 'Black,White,Cream' : 'Đen,Trắng,Kem'} />
+              <ViHint text={form.colors} />
             </div>
           </div>
           <ImageUploaderMulti

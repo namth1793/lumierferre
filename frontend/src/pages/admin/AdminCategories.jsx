@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { useCatalog } from '../../context/CatalogContext';
 import { ImageUploaderSingle } from '../../components/admin/ImageUploader';
+import { EditLangBar, ViHint, useEditLang } from '../../components/admin/Bilingual';
 
-const EMPTY = { id: null, name: '', description: '', image: '', sort_order: 0 };
+const EMPTY = { id: null, name: '', description: '', image: '', sort_order: 0, name_en: '', description_en: '' };
 
 export default function AdminCategories() {
   const { authFetch } = useAdmin();
@@ -14,6 +15,7 @@ export default function AdminCategories() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { isEn, k } = useEditLang();
 
   const fetchCategories = useCallback(() => {
     setLoading(true);
@@ -24,7 +26,7 @@ export default function AdminCategories() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!editing.name) { setError('Vui lòng nhập tên danh mục.'); return; }
+    if (!editing.name) { setError('Vui lòng nhập tên danh mục (bản tiếng Việt).'); return; }
     setSaving(true); setError('');
     try {
       const url = editing.id ? `/api/admin/categories/${editing.id}` : '/api/admin/categories';
@@ -66,18 +68,22 @@ export default function AdminCategories() {
         <button onClick={() => setEditing({ ...EMPTY })} className="btn-dark">+ Thêm Danh Mục</button>
       </div>
 
+      <EditLangBar />
+
       {notice && <p className="mb-6 text-sm font-inter text-green-600">{notice}</p>}
 
       {editing && (
         <form onSubmit={handleSave} className="bg-white border border-gray-100 p-6 mb-8 space-y-5 max-w-xl">
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">{editing.id ? 'Chỉnh Sửa Danh Mục' : 'Thêm Danh Mục'}</h2>
           <div>
-            <label className={labelCls}>Tên danh mục <span className="text-red-500">*</span></label>
-            <input type="text" value={editing.name} onChange={e => setEditing(c => ({ ...c, name: e.target.value }))} className={inputCls} />
+            <label className={labelCls}>Tên danh mục {!isEn && <span className="text-red-500">*</span>}</label>
+            <input type="text" value={editing[k('name')] || ''} onChange={e => setEditing(c => ({ ...c, [k('name')]: e.target.value }))} className={inputCls} />
+            <ViHint text={editing.name} />
           </div>
           <div>
             <label className={labelCls}>Mô tả</label>
-            <textarea rows={2} value={editing.description} onChange={e => setEditing(c => ({ ...c, description: e.target.value }))} className={inputCls + ' resize-none'} />
+            <textarea rows={2} value={editing[k('description')] || ''} onChange={e => setEditing(c => ({ ...c, [k('description')]: e.target.value }))} className={inputCls + ' resize-none'} />
+            <ViHint text={editing.description} />
           </div>
           <ImageUploaderSingle label="Ảnh danh mục" value={editing.image} onChange={(image) => setEditing(c => ({ ...c, image }))} />
           <div>
@@ -107,8 +113,11 @@ export default function AdminCategories() {
                 <td className="px-4 py-3">
                   {c.image ? <img src={c.image} alt={c.name} className="w-10 h-10 object-cover bg-gray-50" /> : <div className="w-10 h-10 bg-gray-50" />}
                 </td>
-                <td className="px-4 py-3 text-sm font-inter font-medium">{c.name}</td>
-                <td className="px-4 py-3 text-xs text-warm-gray font-inter max-w-xs truncate">{c.description}</td>
+                <td className="px-4 py-3 text-sm font-inter font-medium">
+                  {(isEn && c.name_en) || c.name}
+                  {isEn && !c.name_en && <span className="ml-2 text-[9px] tracking-[0.1em] uppercase text-amber-600">chưa có EN</span>}
+                </td>
+                <td className="px-4 py-3 text-xs text-warm-gray font-inter max-w-xs truncate">{(isEn && c.description_en) || c.description}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-3">
                     <button onClick={() => setEditing(c)} className="text-xs font-inter text-black hover:opacity-50 underline underline-offset-2">Sửa</button>

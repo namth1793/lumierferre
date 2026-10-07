@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { ImageUploaderSingle } from '../../components/admin/ImageUploader';
+import { EditLangBar, ViHint, useEditLang } from '../../components/admin/Bilingual';
 
 export default function AdminSettings() {
   const { authFetch } = useAdmin();
@@ -10,6 +11,7 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const { k } = useEditLang();
 
   useEffect(() => {
     authFetch('/api/admin/settings/general').then(r => r.json()).then(setForm).catch(() => setForm({}));
@@ -40,6 +42,8 @@ export default function AdminSettings() {
         <h1 className="font-cormorant text-3xl font-light tracking-[0.08em]">Cài Đặt Chung</h1>
       </div>
 
+      <EditLangBar />
+
       <form onSubmit={handleSave} className="space-y-6">
         <div className="bg-white border border-gray-100 p-6 space-y-5">
           <h2 className="text-[10px] tracking-[0.25em] uppercase text-warm-gray">Thương Hiệu</h2>
@@ -50,7 +54,8 @@ export default function AdminSettings() {
           <ImageUploaderSingle label="Logo (tùy chọn, hiển thị cạnh tên shop)" value={form.logo_url} onChange={(v) => set('logo_url', v)} />
           <div>
             <label className={labelCls}>Thông báo trên thanh đầu trang</label>
-            <input type="text" value={form.announcement_text || ''} onChange={e => set('announcement_text', e.target.value)} className={inputCls} />
+            <input type="text" value={form[k('announcement_text')] || ''} onChange={e => set(k('announcement_text'), e.target.value)} className={inputCls} />
+            <ViHint text={form.announcement_text} />
           </div>
         </div>
 
@@ -59,11 +64,13 @@ export default function AdminSettings() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Địa chỉ Hà Nội</label>
-              <input type="text" value={form.footer_address_hn || ''} onChange={e => set('footer_address_hn', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('footer_address_hn')] || ''} onChange={e => set(k('footer_address_hn'), e.target.value)} className={inputCls} />
+            <ViHint text={form.footer_address_hn} />
             </div>
             <div>
               <label className={labelCls}>Địa chỉ TP.HCM</label>
-              <input type="text" value={form.footer_address_hcm || ''} onChange={e => set('footer_address_hcm', e.target.value)} className={inputCls} />
+              <input type="text" value={form[k('footer_address_hcm')] || ''} onChange={e => set(k('footer_address_hcm'), e.target.value)} className={inputCls} />
+            <ViHint text={form.footer_address_hcm} />
             </div>
             <div>
               <label className={labelCls}>Số điện thoại</label>
@@ -76,7 +83,8 @@ export default function AdminSettings() {
           </div>
           <div>
             <label className={labelCls}>Giờ mở cửa</label>
-            <input type="text" value={form.footer_hours || ''} onChange={e => set('footer_hours', e.target.value)} className={inputCls} />
+            <input type="text" value={form[k('footer_hours')] || ''} onChange={e => set(k('footer_hours'), e.target.value)} className={inputCls} />
+            <ViHint text={form.footer_hours} />
           </div>
         </div>
 
