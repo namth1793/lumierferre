@@ -6,7 +6,7 @@ import { useCatalog } from '../context/CatalogContext';
 
 export default function Collections() {
   const { slug } = useParams();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { collections } = useCatalog();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,10 +48,10 @@ export default function Collections() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/products?collection=${slug}&limit=20`)
+    fetch(`/api/products?collection=${slug}&limit=20&lang=${lang}`)
       .then(r => r.json()).then(d => { setProducts(d.products || []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [slug]);
+  }, [slug, lang]);
 
   return (
     <div>

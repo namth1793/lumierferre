@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useLanguage } from './LanguageContext';
 
 // Danh mục + bộ sưu tập dùng chung cho navbar, footer, bộ lọc... lấy từ DB để luôn khớp với admin
 const CatalogContext = createContext(null);
@@ -6,11 +7,12 @@ const CatalogContext = createContext(null);
 export function CatalogProvider({ children }) {
   const [categories, setCategories] = useState([]);
   const [collections, setCollections] = useState([]);
+  const { lang } = useLanguage();
 
   const refetch = useCallback(() => Promise.all([
-    fetch('/api/categories').then(r => r.json()).then(d => Array.isArray(d) && setCategories(d)).catch(() => {}),
-    fetch('/api/collections').then(r => r.json()).then(d => Array.isArray(d) && setCollections(d)).catch(() => {}),
-  ]), []);
+    fetch(`/api/categories?lang=${lang}`).then(r => r.json()).then(d => Array.isArray(d) && setCategories(d)).catch(() => {}),
+    fetch(`/api/collections?lang=${lang}`).then(r => r.json()).then(d => Array.isArray(d) && setCollections(d)).catch(() => {}),
+  ]), [lang]);
 
   useEffect(() => {
     refetch();

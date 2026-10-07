@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useLanguage } from './LanguageContext';
 
 const SiteSettingsContext = createContext(null);
 
@@ -12,9 +13,11 @@ const DEFAULTS = {
 export function SiteSettingsProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
+  const { lang } = useLanguage();
 
   const refetch = useCallback(() => {
-    return fetch('/api/settings')
+    // Nội dung admin nhập tiếng Việt; lang=en → server trả bản đã dịch tự động
+    return fetch(`/api/settings?lang=${lang}`)
       .then(r => r.json())
       .then(data => setSettings(prev => ({
         general: { ...prev.general, ...(data.general || {}) },
@@ -24,7 +27,7 @@ export function SiteSettingsProvider({ children }) {
       })))
       .catch(() => {})
       .finally(() => setLoaded(true));
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     refetch();

@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const kiotviet = require('./kiotviet');
 const cloudinaryStore = require('./cloudinary');
+const { createTranslator } = require('./translator');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
@@ -496,21 +497,85 @@ db.prepare(`
   'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=700&h=900&fit=crop',
 ]));
 
+// ── Tự động dịch VI → EN ─────────────────────────────────
+// Admin chỉ nhập tiếng Việt; khi lưu, server dịch luôn sang tiếng Anh rồi mới trả lời.
+// API công khai nhận ?lang=en để trả nội dung đã dịch.
+const translator = createTranslator(db);
+const wantsEn = (req) => req.query.lang === 'en';
+
+// Trường nội dung cần dịch trong site_settings (ở mọi cấp, kể cả trong hero_slides/team/stats/showrooms).
+// Không có trong danh sách: tên người, địa chỉ, SĐT, email, link, ảnh...
+const SETTING_TEXT_KEYS = new Set([
+  'announcement_text', 'footer_hours',
+  'label', 'title', 'subtitle', 'cta_text', 'role', 'city',
+  'about_label', 'about_title1', 'about_title2', 'about_desc1', 'about_desc2', 'quote_label', 'quote_text',
+  'story_label', 'heading_line1', 'heading_line2', 'story1', 'story2', 'story3',
+  'atelier_title1', 'atelier_title2', 'atelier_desc1', 'atelier_desc2',
+  'bespoke_title', 'bespoke_desc',
+]);
+
+function mapSettingTexts(value, fn, key) {
+  if (Array.isArray(value)) return value.map(v => mapSettingTexts(v, fn, key));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapSettingTexts(v, fn, k)]));
+  }
+  return typeof value === 'string' && SETTING_TEXT_KEYS.has(key) ? fn(value) : value;
+}
+function settingTexts(value) {
+  const out = [];
+  mapSettingTexts(value, s => { out.push(s); return s; });
+  return out;
+}
+
+const productTexts = (p) => [p.name, p.description, p.fabric, p.care,
+  ...(Array.isArray(p.colors) ? p.colors : JSON.parse(p.colors || '[]'))];
+const categoryTexts = (c) => [c.name, c.description];
+const collectionTexts = (c) => [c.name, c.season, c.description];
+
+const tr = translator.tr;
+const localizeProduct = (p) => ({
+  ...p,
+  name: tr(p.name), description: tr(p.description), fabric: tr(p.fabric), care: tr(p.care),
+  colors: Array.isArray(p.colors) ? p.colors.map(tr) : p.colors,
+  category_name: tr(p.category_name), collection_name: tr(p.collection_name),
+});
+const localizeCategory = (c) => ({ ...c, name: tr(c.name), description: tr(c.description) });
+const localizeCollection = (c) => ({ ...c, name: tr(c.name), season: tr(c.season), description: tr(c.description) });
+
+// Dịch toàn bộ nội dung đang có (chạy ngầm khi khởi động / sau khi đồng bộ KiotViet)
+function translateAllContent() {
+  const texts = [
+    ...db.prepare('SELECT name, description FROM categories').all().flatMap(categoryTexts),
+    ...db.prepare('SELECT name, season, description FROM collections').all().flatMap(collectionTexts),
+    ...db.prepare('SELECT name, description, fabric, care, colors FROM products').all().flatMap(productTexts),
+    ...db.prepare('SELECT value FROM site_settings').all().flatMap(r => settingTexts(JSON.parse(r.value))),
+  ];
+  return translator.ensure(texts).catch(e => console.warn('⚠ Dịch nội dung thất bại:', e.message));
+}
+
+// Sau khi admin lưu: dịch nội dung của bản ghi vừa ghi (đọc lại từ DB để lấy đúng dữ liệu đã lưu)
+const translateRow = (table, toTexts, id) => {
+  const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
+  return row ? translator.ensureWithin(toTexts(row)) : Promise.resolve(true);
+};
+
 // ── Routes ──────────────────────────────────────────────
 
-app.get('/api/categories', (_req, res) => {
-  res.json(db.prepare('SELECT * FROM categories ORDER BY sort_order').all());
+app.get('/api/categories', (req, res) => {
+  const rows = db.prepare('SELECT * FROM categories ORDER BY sort_order').all();
+  res.json(wantsEn(req) ? rows.map(localizeCategory) : rows);
 });
 
-app.get('/api/collections', (_req, res) => {
-  res.json(db.prepare('SELECT * FROM collections ORDER BY id DESC').all());
+app.get('/api/collections', (req, res) => {
+  const rows = db.prepare('SELECT * FROM collections ORDER BY id DESC').all();
+  res.json(wantsEn(req) ? rows.map(localizeCollection) : rows);
 });
 
-app.get('/api/settings', (_req, res) => {
+app.get('/api/settings', (req, res) => {
   const rows = db.prepare('SELECT key, value FROM site_settings').all();
   const settings = {};
   for (const r of rows) { try { settings[r.key] = JSON.parse(r.value); } catch { settings[r.key] = null; } }
-  res.json(settings);
+  res.json(wantsEn(req) ? mapSettingTexts(settings, tr) : settings);
 });
 
 app.get('/api/products', (req, res) => {
@@ -530,7 +595,11 @@ app.get('/api/products', (req, res) => {
   if (featured === 'true') { q += ' AND p.is_featured = 1'; }
   if (is_new === 'true') { q += ' AND p.is_new = 1'; }
   if (bridal === 'true') { q += ' AND p.is_bridal = 1'; }
-  if (search) { q += ' AND p.name LIKE ?'; params.push(`%${search}%`); }
+  // Tìm theo tên tiếng Việt hoặc tên tiếng Anh đã dịch
+  if (search) {
+    q += ` AND (p.name LIKE ? OR EXISTS (SELECT 1 FROM translations t WHERE t.lang = 'en' AND t.source = p.name AND t.text LIKE ?))`;
+    params.push(`%${search}%`, `%${search}%`);
+  }
 
   if (sort === 'price-asc') q += ' ORDER BY p.price ASC';
   else if (sort === 'price-desc') q += ' ORDER BY p.price DESC';
@@ -550,7 +619,7 @@ app.get('/api/products', (req, res) => {
     colors: JSON.parse(p.colors || '[]'),
   }));
 
-  res.json({ products: rows, total, page: parseInt(page), limit: parseInt(limit) });
+  res.json({ products: wantsEn(req) ? rows.map(localizeProduct) : rows, total, page: parseInt(page), limit: parseInt(limit) });
 });
 
 app.get('/api/products/:slug', (req, res) => {
@@ -577,6 +646,7 @@ app.get('/api/products/:slug', (req, res) => {
     colors: JSON.parse(r.colors || '[]'),
   }));
 
+  if (wantsEn(req)) return res.json({ ...localizeProduct(p), related: related.map(localizeProduct) });
   res.json({ ...p, related });
 });
 
@@ -655,7 +725,7 @@ app.get('/api/admin/products', requireAdmin, (req, res) => {
   res.json({ products: rows, total, page: parseInt(page) });
 });
 
-app.post('/api/admin/products', requireAdmin, (req, res) => {
+app.post('/api/admin/products', requireAdmin, async (req, res) => {
   const { name, slug, price, original_price, category_id, collection_id, description, fabric, care,
     sizes, colors, images, is_featured, is_new, is_bridal, is_soldout } = req.body;
   if (!name || !price) return res.status(400).json({ error: 'Thiếu thông tin bắt buộc.' });
@@ -674,7 +744,8 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
       JSON.stringify(Array.isArray(colors)?colors:(colors||'').split(',').map(s=>s.trim()).filter(Boolean)||['Đen','Trắng','Kem']),
       JSON.stringify(Array.isArray(images)?images:(images||'').split(',').map(s=>s.trim()).filter(Boolean)||[]),
       is_featured?1:0, is_new?1:0, is_bridal?1:0, is_soldout?1:0);
-    res.json({ success: true, id: result.lastInsertRowid });
+    const translated = await translateRow('products', productTexts, result.lastInsertRowid);
+    res.json({ success: true, id: result.lastInsertRowid, translated });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -684,7 +755,7 @@ app.get('/api/admin/products/:id', requireAdmin, (req, res) => {
   res.json({ ...p, images: JSON.parse(p.images||'[]'), sizes: JSON.parse(p.sizes||'[]'), colors: JSON.parse(p.colors||'[]') });
 });
 
-app.put('/api/admin/products/:id', requireAdmin, (req, res) => {
+app.put('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const { name, price, original_price, category_id, collection_id, description, fabric, care,
     sizes, colors, images, is_featured, is_new, is_bridal, is_soldout } = req.body;
   try {
@@ -696,7 +767,8 @@ app.put('/api/admin/products/:id', requireAdmin, (req, res) => {
       JSON.stringify(Array.isArray(colors)?colors:(colors||'').split(',').map(s=>s.trim()).filter(Boolean)),
       JSON.stringify(Array.isArray(images)?images:(images||'').split('\n').map(s=>s.trim()).filter(Boolean)),
       is_featured?1:0, is_new?1:0, is_bridal?1:0, is_soldout?1:0, req.params.id);
-    res.json({ success: true });
+    const translated = await translateRow('products', productTexts, req.params.id);
+    res.json({ success: true, translated });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -842,35 +914,40 @@ app.get('/api/admin/settings/:key', requireAdmin, (req, res) => {
   res.json(JSON.parse(row.value));
 });
 
-app.put('/api/admin/settings/:key', requireAdmin, (req, res) => {
+app.put('/api/admin/settings/:key', requireAdmin, async (req, res) => {
   const { key } = req.params;
   if (!DEFAULT_SETTINGS[key]) return res.status(404).json({ error: 'Không tìm thấy mục cài đặt.' });
   db.prepare(`
     INSERT INTO site_settings (key, value) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
   `).run(key, JSON.stringify(req.body));
-  res.json({ success: true });
+  const translated = await translator.ensureWithin(settingTexts(req.body));
+  res.json({ success: true, translated });
 });
 
 // ─── Danh mục (Categories) ──────────────────────────────────────────
-app.post('/api/admin/categories', requireAdmin, (req, res) => {
+app.post('/api/admin/categories', requireAdmin, async (req, res) => {
   const { name, description, image, sort_order } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên danh mục.' });
   try {
     const result = db.prepare('INSERT INTO categories (name, slug, description, image, sort_order) VALUES (?,?,?,?,?)')
       .run(name, slugify(name), description || '', image || '', sort_order || 0);
-    res.json({ success: true, id: result.lastInsertRowid });
+    const translated = await translateRow('categories', categoryTexts, result.lastInsertRowid);
+    res.json({ success: true, id: result.lastInsertRowid, translated });
   } catch (e) {
     res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Danh mục này đã tồn tại.' : e.message });
   }
 });
 
-app.put('/api/admin/categories/:id', requireAdmin, (req, res) => {
+app.put('/api/admin/categories/:id', requireAdmin, async (req, res) => {
   const { name, description, image, sort_order } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên danh mục.' });
-  db.prepare('UPDATE categories SET name=?, description=?, image=?, sort_order=? WHERE id=?')
-    .run(name, description || '', image || '', sort_order || 0, req.params.id);
-  res.json({ success: true });
+  try {
+    db.prepare('UPDATE categories SET name=?, description=?, image=?, sort_order=? WHERE id=?')
+      .run(name, description || '', image || '', sort_order || 0, req.params.id);
+  } catch (e) { return res.status(400).json({ error: e.message }); }
+  const translated = await translateRow('categories', categoryTexts, req.params.id);
+  res.json({ success: true, translated });
 });
 
 app.delete('/api/admin/categories/:id', requireAdmin, (req, res) => {
@@ -885,24 +962,28 @@ app.delete('/api/admin/categories/:id', requireAdmin, (req, res) => {
 });
 
 // ─── Bộ sưu tập (Collections) ────────────────────────────────────────
-app.post('/api/admin/collections', requireAdmin, (req, res) => {
+app.post('/api/admin/collections', requireAdmin, async (req, res) => {
   const { name, season, description, cover_image } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên bộ sưu tập.' });
   try {
     const result = db.prepare('INSERT INTO collections (name, slug, season, description, cover_image) VALUES (?,?,?,?,?)')
       .run(name, slugify(name), season || '', description || '', cover_image || '');
-    res.json({ success: true, id: result.lastInsertRowid });
+    const translated = await translateRow('collections', collectionTexts, result.lastInsertRowid);
+    res.json({ success: true, id: result.lastInsertRowid, translated });
   } catch (e) {
     res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Bộ sưu tập này đã tồn tại.' : e.message });
   }
 });
 
-app.put('/api/admin/collections/:id', requireAdmin, (req, res) => {
+app.put('/api/admin/collections/:id', requireAdmin, async (req, res) => {
   const { name, season, description, cover_image } = req.body;
   if (!name) return res.status(400).json({ error: 'Thiếu tên bộ sưu tập.' });
-  db.prepare('UPDATE collections SET name=?, season=?, description=?, cover_image=? WHERE id=?')
-    .run(name, season || '', description || '', cover_image || '', req.params.id);
-  res.json({ success: true });
+  try {
+    db.prepare('UPDATE collections SET name=?, season=?, description=?, cover_image=? WHERE id=?')
+      .run(name, season || '', description || '', cover_image || '', req.params.id);
+  } catch (e) { return res.status(400).json({ error: e.message }); }
+  const translated = await translateRow('collections', collectionTexts, req.params.id);
+  res.json({ success: true, translated });
 });
 
 app.delete('/api/admin/collections/:id', requireAdmin, (req, res) => {
@@ -976,6 +1057,7 @@ app.post('/api/admin/kiotviet/sync-products', requireAdmin, async (_req, res) =>
       }
     }
 
+    translateAllContent();
     res.json({
       success: true,
       categories: { total: kvCategories.length, created: catCreated, updated: catUpdated },
@@ -1090,4 +1172,6 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`✦ LUMIE FERRE Backend → http://localhost:${PORT}`);
+  console.log(`✦ Tự động dịch EN: ${translator.provider}`);
+  translateAllContent();
 });

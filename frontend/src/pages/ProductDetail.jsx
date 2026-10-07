@@ -9,7 +9,7 @@ const fmt = (n) => new Intl.NumberFormat('vi-VN').format(n) + '₫';
 export default function ProductDetail() {
   const { slug } = useParams();
   const { addToCart, wishlist, toggleWishlist } = useCart();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -23,9 +23,9 @@ export default function ProductDetail() {
 
   useEffect(() => {
     setLoading(true); setSelectedImage(0); setSelectedSize(''); setSelectedColor(''); setQty(1);
-    fetch(`/api/products/${slug}`)
+    fetch(`/api/products/${slug}?lang=${lang}`)
       .then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
-  }, [slug]);
+  }, [slug, lang]);
 
   const handleAddToCart = () => {
     let hasError = false;

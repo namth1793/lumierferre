@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCatalog } from '../context/CatalogContext';
 
 export default function Products() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const { categories, collections } = useCatalog();
@@ -32,11 +32,11 @@ export default function Products() {
     if (is_new) params.set('is_new', is_new);
     if (bridal) params.set('bridal', bridal);
     if (search) params.set('search', search);
-    params.set('sort', sort); params.set('page', page); params.set('limit', LIMIT);
+    params.set('sort', sort); params.set('page', page); params.set('limit', LIMIT); params.set('lang', lang);
     fetch(`/api/products?${params}`)
       .then(r => r.json()).then(data => { setProducts(data.products || []); setTotal(data.total || 0); })
       .catch(() => {}).finally(() => setLoading(false));
-  }, [category, collection, featured, is_new, bridal, search, sort, page]);
+  }, [category, collection, featured, is_new, bridal, search, sort, page, lang]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 

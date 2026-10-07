@@ -19,7 +19,7 @@ const DEFAULT_HERO_SLIDES = [
 ];
 
 export default function Home() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { settings } = useSiteSettings();
   const home = settings.home;
   const [products, setProducts] = useState([]);
@@ -30,9 +30,9 @@ export default function Home() {
   const HERO_SLIDES = home.hero_slides?.length ? home.hero_slides : DEFAULT_HERO_SLIDES;
 
   useEffect(() => {
-    fetch('/api/products?featured=true&limit=8')
+    fetch(`/api/products?featured=true&limit=8&lang=${lang}`)
       .then(r => r.json()).then(data => setProducts(data.products || [])).catch(() => {});
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => setCurrentSlide(s => (s + 1) % HERO_SLIDES.length), 5000);
